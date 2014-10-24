@@ -6,7 +6,7 @@
 /* System Includes */
 
 void UartNetwork::init() {
-	Serial.begin(9600);
+	Serial.begin(57600);
 	while (!Serial)
 		;
 }
@@ -42,6 +42,7 @@ int UartNetwork::write(unsigned char* buffer, int len, int timeoutMs) {
 	for (int i = 0; i < len; ++i) {
 		Serial.write(buffer[i]);
 	}
+	Serial.flush();
 	return len;
 }
 

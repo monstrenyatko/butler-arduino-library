@@ -2,7 +2,8 @@
 #include "Logger.h"
 #include "Network.h"
 #include "UartNetwork.h"
-#include "Sensor.h"
+#include "SensorTemperature.h"
+#include "SensorLight.h"
 #include "GoliathMqttSensor.h"
 /* External Includes */
 #include <MemoryFree.h>
@@ -12,21 +13,26 @@
 #include <SoftwareSerial.h>
 
 ////////// CONFIGURATION //////////
+#define MQTT_MAX_PACKET_SIZE 80
+#define MQTT_MAX_MESSAGE_HANDLERS 1
 #define MQTT_HOST "test.mosquitto.org"
 #define MQTT_PORT 1883
 #define MQTT_CLIENT_ID "GOLIATH_SENSOR_TEMPERATURE"
 #define MQTT_SUBSCRIBE_QOS MQTT::QOS1
 #define MQTT_SUBSCRIBE_TOPIC_CFG "goliath/cfg/sensor/temperature"
 #define MQTT_PUBLISH_QOS MQTT::QOS1
-#define MQTT_PUBLISH_TOPIC "goliath/sensor/temperature"
+#define MQTT_PUBLISH_TOPIC "goliath/sensor/home/1234"
 #define MQTT_PUBLISH_PERIOD_MS 15000
 #define MQTT_PUBLISH_PERIOD_MAX_MS (1*60*60*1000) // 1 hour
+#define SENSOR_LIGHT_PIN A3
 
 ////////// OBJECTS //////////
 Print* logPrinter = NULL;
 Network* network = NULL;
-MQTT::Client<Network, Countdown>* mqtt = NULL;
-Sensor* sensor = NULL;
+MQTT::Client<Network, Countdown, MQTT_MAX_PACKET_SIZE, MQTT_MAX_MESSAGE_HANDLERS>* mqtt =
+		NULL;
+Sensor* sensorTemperature = NULL;
+Sensor* sensorLight = NULL;
 unsigned long publishPeriodMs = MQTT_PUBLISH_PERIOD_MS;
 
 //// DECLARATION ////
@@ -57,12 +63,14 @@ void setup() {
 
 	//// MQTT ////
 	{
-		mqtt = new MQTT::Client<Network, Countdown>(*network);
+		mqtt = new MQTT::Client<Network, Countdown, MQTT_MAX_PACKET_SIZE,
+		MQTT_MAX_MESSAGE_HANDLERS>(*network);
 	}
 
 	//// SENSOR ////
 	{
-		sensor = new Sensor;
+		sensorTemperature = new SensorTemperature;
+		sensorLight = new SensorLight(SENSOR_LIGHT_PIN);
 	}
 
 	////// INIT END //////
@@ -81,9 +89,12 @@ void loop() {
 		connect();
 	}
 	{
-		const uint8_t bufSize = 32;
+		const uint8_t bufSize = 128;
 		char buf[bufSize];
-		snprintf_P(buf, bufSize, PSTR("temperature:%i"), sensor->getData());
+		memset(buf, 0, bufSize);
+		// format is "name1:value,name2:value,nameN:value"
+		snprintf_P(buf, bufSize, PSTR("temperature:%li,light:%li"),
+				sensorTemperature->getData(), sensorLight->getData());
 		MQTT::Message message;
 		message.qos = MQTT_PUBLISH_QOS;
 		message.retained = false;
@@ -108,7 +119,7 @@ void check() {
 }
 
 void connect() {
-	LOG_PRINTFLN("TCP connect to %s:%d", MQTT_HOST, MQTT_PORT);
+	//LOG_PRINTFLN("TCP connect to %s:%d", MQTT_HOST, MQTT_PORT);
 	int rc = network->connect(MQTT_HOST, MQTT_PORT);
 	if (rc != 0) {
 		LOG_PRINTFLN("ERROR, TCP connect, rc:%d", rc);

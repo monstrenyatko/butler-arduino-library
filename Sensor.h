@@ -8,7 +8,8 @@
 
 class Sensor {
 public:
-	int16_t getData();
+	virtual ~Sensor() {}
+	virtual int32_t getData() = 0;
 };
 
 #endif /* SENSOR_H_ */
