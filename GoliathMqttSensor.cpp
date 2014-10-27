@@ -4,6 +4,7 @@
 #include "UartNetwork.h"
 #include "SensorTemperature.h"
 #include "SensorLight.h"
+#include "Lpm.h"
 #include "GoliathMqttSensor.h"
 /* External Includes */
 #include <MemoryFree.h>
@@ -13,10 +14,15 @@
 #include <SoftwareSerial.h>
 
 ////////// CONFIGURATION //////////
+#define PIN_DBG_OUTPUT_RX 10
+#define PIN_DBG_OUTPUT_TX 11
+#define PIN_LPM_WAKEUP 3
+#define PIN_LED_AWAKE 13
+#define PIN_SENSOR_LIGHT A3
+#define MQTT_HOST "STUB"
+#define MQTT_PORT 0
 #define MQTT_MAX_PACKET_SIZE 80
 #define MQTT_MAX_MESSAGE_HANDLERS 1
-#define MQTT_HOST "test.mosquitto.org"
-#define MQTT_PORT 1883
 #define MQTT_CLIENT_ID "GOLIATH_SENSOR_TEMPERATURE"
 #define MQTT_SUBSCRIBE_QOS MQTT::QOS1
 #define MQTT_SUBSCRIBE_TOPIC_CFG "goliath/cfg/sensor/temperature"
@@ -24,7 +30,7 @@
 #define MQTT_PUBLISH_TOPIC "goliath/sensor/home/1234"
 #define MQTT_PUBLISH_PERIOD_MS 15000
 #define MQTT_PUBLISH_PERIOD_MAX_MS (1*60*60*1000) // 1 hour
-#define SENSOR_LIGHT_PIN A3
+#define MQTT_DISCONNECTED_IDLE_PERIOD_MS 5000
 
 ////////// OBJECTS //////////
 Print* logPrinter = NULL;
@@ -48,12 +54,21 @@ void setup() {
 	////// INIT //////
 	//// LOG ////
 	{
-		SoftwareSerial* t = new SoftwareSerial(10, 11); // Pins RX, TX
+		SoftwareSerial* t = new SoftwareSerial(PIN_DBG_OUTPUT_RX,
+		PIN_DBG_OUTPUT_TX);
 		// set the data rate
 		t->begin(4800);
 		logPrinter = t;
 	}
 	Logger::init(*logPrinter);
+
+	//// LPM ////
+	{
+		LpmConfig config;
+		config.pinLedAwake = PIN_LED_AWAKE;
+		config.pinToWakeUp = PIN_LPM_WAKEUP;
+		Lpm::init(config);
+	}
 
 	//// NETWORK ////
 	{
@@ -70,7 +85,7 @@ void setup() {
 	//// SENSOR ////
 	{
 		sensorTemperature = new SensorTemperature;
-		sensorLight = new SensorLight(SENSOR_LIGHT_PIN);
+		sensorLight = new SensorLight(PIN_SENSOR_LIGHT);
 	}
 
 	////// INIT END //////
@@ -87,6 +102,9 @@ void loop() {
 	check();
 	while (!mqtt->isConnected()) {
 		connect();
+		if (!mqtt->isConnected()) {
+			Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS);
+		}
 	}
 	{
 		const uint8_t bufSize = 128;
@@ -119,7 +137,6 @@ void check() {
 }
 
 void connect() {
-	//LOG_PRINTFLN("TCP connect to %s:%d", MQTT_HOST, MQTT_PORT);
 	int rc = network->connect(MQTT_HOST, MQTT_PORT);
 	if (rc != 0) {
 		LOG_PRINTFLN("ERROR, TCP connect, rc:%d", rc);

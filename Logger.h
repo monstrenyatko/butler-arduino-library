@@ -5,10 +5,16 @@
 /* External Includes */
 /* System Includes */
 
+#define LOG_ENABLED 1
 #define LOG_SIZE_MAX 128
 
+#if LOG_ENABLED == 1
 #define LOG_PRINTLN(str) Logger::println(str)
 #define LOG_PRINTFLN(fmt, ...) Logger::printfln_P(PSTR(fmt), ##__VA_ARGS__)
+#else
+#define LOG_PRINTLN(str) ((void)0)
+#define LOG_PRINTFLN(fmt, ...) ((void)0)
+#endif
 
 class Print;
 

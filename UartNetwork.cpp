@@ -1,6 +1,6 @@
 /* Internal Includes */
 #include "UartNetwork.h"
-
+#include "Lpm.h"
 #include "GoliathMqttSensor.h"
 /* External Includes */
 /* System Includes */
@@ -20,7 +20,7 @@ int UartNetwork::connect(uint32_t hostname, int port) {
 }
 
 int UartNetwork::read(unsigned char* buffer, int len, int timeoutMs) {
-	int intervalMs = 10;
+	int intervalMs = 16;
 	int totalMs = 0;
 	int rc = -1;
 	Serial.setTimeout(timeoutMs);
@@ -28,7 +28,7 @@ int UartNetwork::read(unsigned char* buffer, int len, int timeoutMs) {
 		intervalMs = 2;
 	}
 	while (Serial.available() < len && totalMs < timeoutMs) {
-		delay(intervalMs);
+		Lpm::idle(intervalMs);
 		totalMs += intervalMs;
 	}
 	if (Serial.available() >= len) {
