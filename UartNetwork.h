@@ -6,15 +6,22 @@
 /* External Includes */
 /* System Includes */
 
+struct UartNetworkConfig {
+	uint32_t speed;
+	uint8_t readIdlePeriodLongMs;
+	uint8_t readIdlePeriodShortMs;
+};
+
 class UartNetwork: public Network {
 public:
-	static void init();
+	UartNetwork(const UartNetworkConfig&);
 	int connect(const char* hostname, int port);
 	int connect(uint32_t hostname, int port);
 	int read(unsigned char* buffer, int len, int timeoutMs);
 	int write(unsigned char* buffer, int len, int timeoutMs);
 	int disconnect();
 private:
+	const UartNetworkConfig mConfig;
 };
 
 #endif // UARTNETWORK_H_

@@ -52,10 +52,9 @@ ISR (TIMER2_COMPA_vect)
 	++lpmClockInterruptsQty;
 }
 
-void Lpm::init(LpmConfig& config) {
+void Lpm::init(const LpmConfig& config) {
 	mConfig = config;
 	digitalWrite(mConfig.pinLedAwake, HIGH);
-	//pinMode(mConfig.pinToWakeUp, INPUT);
 	resetClock();
 	clock_0_TIMSK = TIMSK0;
 }
@@ -88,8 +87,15 @@ void Lpm::idle(uint32_t ms) {
 			// go to low power
 			{
 				digitalWrite(mConfig.pinLedAwake, LOW);
-				set_sleep_mode(SLEEP_MODE_IDLE);
-				//set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+				switch(mConfig.mode) {
+					case LPM_MODE_PWR_SAVE:
+						set_sleep_mode(SLEEP_MODE_PWR_SAVE);
+						break;
+					case LPM_MODE_IDLE:
+					default:
+						set_sleep_mode(SLEEP_MODE_IDLE);
+					break;
+				}
 				cli();
 				sleep_enable();
 				sei();

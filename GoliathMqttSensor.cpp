@@ -23,14 +23,20 @@
 #define MQTT_PORT 0
 #define MQTT_MAX_PACKET_SIZE 80
 #define MQTT_MAX_MESSAGE_HANDLERS 1
-#define MQTT_CLIENT_ID "GOLIATH_SENSOR_TEMPERATURE"
+#define MQTT_CLIENT_ID "GOLIATH_SENSOR_HOME_1234"
 #define MQTT_SUBSCRIBE_QOS MQTT::QOS1
-#define MQTT_SUBSCRIBE_TOPIC_CFG "goliath/cfg/sensor/temperature"
+#define MQTT_SUBSCRIBE_TOPIC_CFG "goliath/cfg/sensor/home/1234"
 #define MQTT_PUBLISH_QOS MQTT::QOS1
 #define MQTT_PUBLISH_TOPIC "goliath/sensor/home/1234"
 #define MQTT_PUBLISH_PERIOD_MS 15000
 #define MQTT_PUBLISH_PERIOD_MAX_MS (1*60*60*1000) // 1 hour
 #define MQTT_DISCONNECTED_IDLE_PERIOD_MS 5000
+#define NETWORK_UART_SPEED 57600
+#define NETWORK_UART_IDLE_PERIOD_LONG_MS 16
+#define NETWORK_UART_IDLE_PERIOD_SHORT_MS 2
+#define LPM_MODE LPM_MODE_IDLE
+#define LOG_UART_SPEED 4800
+
 
 ////////// OBJECTS //////////
 Print* logPrinter = NULL;
@@ -52,28 +58,33 @@ void processMessageCfg(MQTT::MessageData& md);
  */
 void setup() {
 	////// INIT //////
+#if LOG_ENABLED
 	//// LOG ////
 	{
 		SoftwareSerial* t = new SoftwareSerial(PIN_DBG_OUTPUT_RX,
 		PIN_DBG_OUTPUT_TX);
 		// set the data rate
-		t->begin(4800);
+		t->begin(LOG_UART_SPEED);
 		logPrinter = t;
 	}
 	Logger::init(*logPrinter);
+#endif
 
 	//// LPM ////
 	{
 		LpmConfig config;
 		config.pinLedAwake = PIN_LED_AWAKE;
-		config.pinToWakeUp = PIN_LPM_WAKEUP;
+		config.mode = LPM_MODE;
 		Lpm::init(config);
 	}
 
 	//// NETWORK ////
 	{
-		UartNetwork::init();
-		network = new UartNetwork;
+		UartNetworkConfig config;
+		config.speed = NETWORK_UART_SPEED;
+		config.readIdlePeriodLongMs = NETWORK_UART_IDLE_PERIOD_LONG_MS;
+		config.readIdlePeriodShortMs = NETWORK_UART_IDLE_PERIOD_SHORT_MS;
+		network = new UartNetwork(config);
 	}
 
 	//// MQTT ////
@@ -192,8 +203,7 @@ void processMessageCfg(MQTT::MessageData& md) {
 			unsigned long tmp = value.toInt();
 			if (tmp > 0) {
 				publishPeriodMs = (tmp > MQTT_PUBLISH_PERIOD_MAX_MS) ?
-				MQTT_PUBLISH_PERIOD_MAX_MS :
-																		tmp;
+				MQTT_PUBLISH_PERIOD_MAX_MS : tmp;
 			}
 		}
 		// Find the next token

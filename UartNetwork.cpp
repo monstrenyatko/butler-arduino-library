@@ -5,10 +5,11 @@
 /* External Includes */
 /* System Includes */
 
-void UartNetwork::init() {
-	Serial.begin(57600);
-	while (!Serial)
-		;
+UartNetwork::UartNetwork(const UartNetworkConfig& config)
+:mConfig(config)
+{
+	Serial.begin(mConfig.speed);
+	while (!Serial);
 }
 
 int UartNetwork::connect(const char* hostname, int port) {
@@ -20,12 +21,12 @@ int UartNetwork::connect(uint32_t hostname, int port) {
 }
 
 int UartNetwork::read(unsigned char* buffer, int len, int timeoutMs) {
-	int intervalMs = 16;
+	int intervalMs = mConfig.readIdlePeriodLongMs;
 	int totalMs = 0;
 	int rc = -1;
 	Serial.setTimeout(timeoutMs);
-	if (timeoutMs < 30) {
-		intervalMs = 2;
+	if (timeoutMs < intervalMs) {
+		intervalMs = mConfig.readIdlePeriodShortMs;
 	}
 	while (Serial.available() < len && totalMs < timeoutMs) {
 		Lpm::idle(intervalMs);

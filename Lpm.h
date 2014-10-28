@@ -6,9 +6,14 @@
 #ifndef LPM_H_
 #define LPM_H_
 
+enum LpmMode {
+	LPM_MODE_IDLE,
+	LPM_MODE_PWR_SAVE
+};
+
 struct LpmConfig {
-	uint8_t pinLedAwake;
-	uint8_t pinToWakeUp;
+	uint8_t		pinLedAwake;
+	LpmMode		mode;
 };
 
 /*
@@ -16,7 +21,7 @@ struct LpmConfig {
  */
 class Lpm {
 public:
-	static void init(LpmConfig&);
+	static void init(const LpmConfig&);
 	static void idle(uint32_t ms);
 private:
 	static LpmConfig mConfig;
