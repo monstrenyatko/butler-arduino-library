@@ -48,6 +48,7 @@ Sensor* sensorLight = NULL;
 unsigned long publishPeriodMs = MQTT_PUBLISH_PERIOD_MS;
 
 //// DECLARATION ////
+void(* reset) (void) = 0;//declare reset function at address 0
 void check();
 void connect();
 void processMessageCfg(MQTT::MessageData& md);
@@ -115,6 +116,7 @@ void loop() {
 		connect();
 		if (!mqtt->isConnected()) {
 			Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS);
+			reset();
 		}
 	}
 	{
@@ -140,9 +142,11 @@ void loop() {
 }
 
 void check() {
+	unsigned long time = millis();
 	LOG_PRINTFLN("#################################");
 	LOG_PRINTFLN("###      Periodic check       ###");
 	LOG_PRINTFLN("### Memory Free :    %.5u B  ###", freeMemory());
+	LOG_PRINTFLN("### Time        : %.8lu Ms ###", time);
 	LOG_PRINTFLN("### Period      : %.8lu Ms ###", publishPeriodMs);
 	LOG_PRINTFLN("#################################");
 }
@@ -157,6 +161,7 @@ void connect() {
 	MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
 	data.MQTTVersion = 3;
 	data.clientID.cstring = MQTT_CLIENT_ID;
+	data.cleansession = true;
 	rc = mqtt->connect(data);
 	if (rc != 0) {
 		LOG_PRINTFLN("ERROR, MQTT connect, rc:%d", rc);

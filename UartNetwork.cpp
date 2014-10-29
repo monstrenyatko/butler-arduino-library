@@ -21,21 +21,28 @@ int UartNetwork::connect(uint32_t hostname, int port) {
 }
 
 int UartNetwork::read(unsigned char* buffer, int len, int timeoutMs) {
-	int intervalMs = mConfig.readIdlePeriodLongMs;
-	int totalMs = 0;
-	int rc = -1;
 	Serial.setTimeout(timeoutMs);
-	if (timeoutMs < intervalMs) {
-		intervalMs = mConfig.readIdlePeriodShortMs;
+	const int intervalMs = (timeoutMs < mConfig.readIdlePeriodLongMs)
+			? mConfig.readIdlePeriodShortMs : mConfig.readIdlePeriodLongMs;
+	int totalMs = 0;
+	int readLen = 0;
+	while(readLen < len && totalMs < timeoutMs) {
+		int available = Serial.available();
+		if (available) {
+			int needToRead = len-readLen;
+			int qty = Serial.readBytes((char*) buffer, needToRead);
+			if (qty<0) {
+				// error => return with current read len
+				break;
+			}
+			buffer+=qty;
+			readLen+=qty;
+		} else {
+			Lpm::idle(intervalMs);
+			totalMs += intervalMs;
+		}
 	}
-	while (Serial.available() < len && totalMs < timeoutMs) {
-		Lpm::idle(intervalMs);
-		totalMs += intervalMs;
-	}
-	if (Serial.available() >= len) {
-		rc = Serial.readBytes((char*) buffer, len);
-	}
-	return rc;
+	return readLen;
 }
 
 int UartNetwork::write(unsigned char* buffer, int len, int timeoutMs) {

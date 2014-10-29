@@ -98,10 +98,17 @@ void Lpm::idle(uint32_t ms) {
 				}
 				cli();
 				sleep_enable();
+				power_adc_disable();
+				power_spi_disable();
+				power_timer0_disable();
+				power_timer1_disable();
+				//power_timer2_disable() => need to keep time tracking
+				power_twi_disable();
 				sei();
 				sleep_cpu();
 				sleep_disable();
 				sei();
+				power_all_enable();
 				// awake from here
 				digitalWrite(mConfig.pinLedAwake, HIGH);
 			}
