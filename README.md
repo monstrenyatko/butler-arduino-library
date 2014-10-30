@@ -45,14 +45,16 @@ Two options are available.
 Arduino IDE
 -----------
 1. Import the project (`File -> Open`)
-2. `Sketch -> Verify/Compile` (to build)
-3. `File -> Upload` (load to the board)
+2. Choose the board in `Tool -> Board` + `Tool -> Processor` + `Tool -> Serial Port`
+3. `Sketch -> Verify/Compile` (to build)
+4. `File -> Upload` (load to the board)
 
 Eclipse
 -------
 1. Import the project (`File -> Import -> General -> Existing Projects into Workspace`)
-2. `Arduino -> verify` (to build)
-3. `Arduino -> Upload Sketch` (load to the board)
+2. Choose the board in `Project -> Properties -> Arduino`
+3. `Arduino -> verify` (to build)
+4. `Arduino -> Upload Sketch` (load to the board)
 
 
 Usage
@@ -69,14 +71,34 @@ Network Connection
 ------------------
 - Communication is done via HardwareSerial.
 - RAW MQTT packets are sent/received to/from serial.
-- If you connect the board to you PC you can use `socat` tool to connect with MQTT Broker.
-- Port is configured to `9600 bit/s`.
-- Example: `socat -d -d -d /dev/tty.usbserial-A9MP9F7V,raw,echo=0,ispeed=9600,ospeed=9600,clocal=1,cs8,nonblock=1,ixoff=0,ixon=0,crtscts=0 TCP:10.201.0.2:1883`
-<br/>FYI: the server can close the TCP connection at any moment => need to restart the `socat`.
+- If you connect the board to the PC you can use `socat` tool to connect with MQTT Broker.
+- Port is configured to `57600 bit/s`.
+- Example:`socat -d -d -d FILE:/dev/ttyUSB0,raw,echo=0,b57600,nonblock=1,cs8,clocal=1,cread=1 TCP:10.201.0.2:1883`
+
+FYI: the server can close the TCP connection at any moment => need to restart the `socat` => You can use shell script:
+```sh
+!#/bin/sh
+while [ 1 ]
+do
+  socat ...
+  sleep 2
+done
+```
 <br/>FYI: need to stop the `socat` if you are going to reload your Sketch to the board.
 
-Application loop behaviour
-==========================
+XBee ZigBee/802.15.4 Network Connection
+---------------------------------------
+You can connect you board to PC via wireless:
+ - Connect your board HardwareSerial with XBee wireless module.
+ - Connect another XBee to the PC => Any available usb-to-serial shield for XBee could be used.
+ - Configure both XBee modules to work in one network and set their serial to `57600 bit/s`.
+ - Start on the PC the `socat` tool as above to allow communication with MQTT Broker.
+
+FYI: It is possible to flash the board over Xbee connection => it works like wireless serial connection.
+<br/> But in this case you need to click reset button on the board at the moment when the loading is started that is not easy...
+
+Application loop behavior
+=========================
 - Establish connection with MQTT Broker If not available.
 - Send telemetry data.
-- Get the configuration If available
+- Get the configuration If available.
