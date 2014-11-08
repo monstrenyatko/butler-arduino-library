@@ -1,3 +1,16 @@
+/*
+ *******************************************************************************
+ *
+ * Purpose: Common interface for Networking implementation
+ *
+ *******************************************************************************
+ * Copyright Monstrenyatko 2014.
+ *
+ * Distributed under the MIT License.
+ * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
+ *******************************************************************************
+ */
+
 #ifndef NETWORK_H_
 #define NETWORK_H_
 

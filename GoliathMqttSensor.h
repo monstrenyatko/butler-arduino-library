@@ -1,3 +1,16 @@
+/*
+ *******************************************************************************
+ *
+ * Purpose: Arduino "Main" functions interface
+ *
+ *******************************************************************************
+ * Copyright Monstrenyatko 2014.
+ *
+ * Distributed under the MIT License.
+ * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
+ *******************************************************************************
+ */
+
 // Only modify this file to include
 // - function definitions (prototypes)
 // - include files

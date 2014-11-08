@@ -1,3 +1,16 @@
+/*
+ *******************************************************************************
+ *
+ * Purpose: Network over UART implementation
+ *
+ *******************************************************************************
+ * Copyright Monstrenyatko 2014.
+ *
+ * Distributed under the MIT License.
+ * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
+ *******************************************************************************
+ */
+
 #ifndef UARTNETWORK_H_
 #define UARTNETWORK_H_
 

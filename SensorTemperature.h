@@ -1,3 +1,16 @@
+/*
+ *******************************************************************************
+ *
+ * Purpose: Temperature Sensor implementation
+ *
+ *******************************************************************************
+ * Copyright Monstrenyatko 2014.
+ *
+ * Distributed under the MIT License.
+ * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
+ *******************************************************************************
+ */
+
 #ifndef SENSOR_TEMPERATURE_H_
 #define SENSOR_TEMPERATURE_H_
 
