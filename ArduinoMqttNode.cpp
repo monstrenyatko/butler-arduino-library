@@ -19,7 +19,7 @@
 #include "SensorTemperature.h"
 #include "SensorLight.h"
 #include "Lpm.h"
-#include "GoliathMqttSensor.h"
+#include "ArduinoMqttNode.h"
 /* External Includes */
 #include <MemoryFree.h>
 #include <Countdown.h>
@@ -37,11 +37,11 @@
 #define MQTT_PORT 0
 #define MQTT_MAX_PACKET_SIZE 80
 #define MQTT_MAX_MESSAGE_HANDLERS 1
-#define MQTT_CLIENT_ID "GOLIATH_SENSOR_HOME_1234"
+#define MQTT_CLIENT_ID "MONSTRENYATKO_HOME_SENSOR_1234"
 #define MQTT_SUBSCRIBE_QOS MQTT::QOS1
-#define MQTT_SUBSCRIBE_TOPIC_CFG "goliath/cfg/sensor/home/1234"
+#define MQTT_SUBSCRIBE_TOPIC_CFG "monstrenyatko/home/cfg/sensor/1234"
 #define MQTT_PUBLISH_QOS MQTT::QOS1
-#define MQTT_PUBLISH_TOPIC "goliath/sensor/home/1234"
+#define MQTT_PUBLISH_TOPIC "monstrenyatko/home/sensor/1234"
 #define MQTT_PUBLISH_PERIOD_MS 15000
 #define MQTT_PUBLISH_PERIOD_MAX_MS (1*60*60*1000) // 1 hour
 #define MQTT_DISCONNECTED_IDLE_PERIOD_MS 5000
@@ -116,8 +116,7 @@ void setup() {
 
 	////// INIT END //////
 	LOG_PRINTFLN("#################################");
-	LOG_PRINTFLN("### MQTT Client for Goliath's ###");
-	LOG_PRINTFLN("###       sensor started      ###");
+	LOG_PRINTFLN("###    MQTT Node is started   ###");
 	LOG_PRINTFLN("#################################");
 }
 

@@ -14,7 +14,7 @@
 /* Internal Includes */
 #include "UartNetwork.h"
 #include "Lpm.h"
-#include "GoliathMqttSensor.h"
+#include "ArduinoMqttNode.h"
 /* External Includes */
 /* System Includes */
 

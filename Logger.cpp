@@ -13,7 +13,7 @@
 
 /* Internal Includes */
 #include "Logger.h"
-#include "GoliathMqttSensor.h"
+#include "ArduinoMqttNode.h"
 /* External Includes */
 /* System Includes */
 #include <Print.h>

@@ -12,7 +12,7 @@
  */
 
 #include "SensorLight.h"
-#include "GoliathMqttSensor.h"
+#include "ArduinoMqttNode.h"
 /* Internal Includes */
 /* External Includes */
 /* System Includes */

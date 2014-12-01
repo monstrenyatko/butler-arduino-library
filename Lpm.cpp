@@ -14,7 +14,7 @@
 /* Internal Includes */
 #include "LPM.h"
 #include "Logger.h"
-#include "GoliathMqttSensor.h"
+#include "ArduinoMqttNode.h"
 /* External Includes */
 /* System Includes */
 #include <avr/sleep.h>

@@ -1,9 +1,9 @@
-GOLIATH MQTT SENSOR
-===================
+ARDUINO MQTT NODE
+=================
 
 About
 =====
-- Simple implementation of the telemetry sensor for the Arduino Nano
+- Simple implementation of the telemetry sensor for the Arduino
 (http://arduino.cc/en/Main/arduinoBoardNano) board.
 - The sensor uses MQTT (http://mqtt.org) protocol.
 - Network communication is built via Serial interface.
@@ -94,7 +94,7 @@ You can connect you board to PC via wireless:
  - Configure both XBee modules to work in one network and set their serial to `57600 bit/s`.
  - Start on the PC the `socat` tool as above to allow communication with MQTT Broker.
 
-FYI: It is possible to flash the board over Xbee connection => it works like wireless serial connection.
+FYI: It is possible to flash the board over XBee connection => it works like wireless serial connection.
 <br/> But in this case you need to click reset button on the board at the moment when the loading is started that is not easy...
 
 Application loop behavior
