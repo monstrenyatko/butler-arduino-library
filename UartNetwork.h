@@ -19,8 +19,11 @@
 /* External Includes */
 /* System Includes */
 
+/* Forward declaration */
+class Uart;
+
 struct UartNetworkConfig {
-	uint32_t speed;
+	Uart*	uart;
 	uint8_t readIdlePeriodLongMs;
 	uint8_t readIdlePeriodShortMs;
 };

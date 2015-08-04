@@ -20,6 +20,8 @@
 #include "SensorLight.h"
 #include "Lpm.h"
 #include "ArduinoMqttNode.h"
+#include "SwUart.h"
+#include "HwUart.h"
 /* External Includes */
 #include <MemoryFree.h>
 #include <Countdown.h>
@@ -28,38 +30,47 @@
 #include <SoftwareSerial.h>
 
 ////////// CONFIGURATION //////////
-#define PIN_DBG_OUTPUT_RX 10
-#define PIN_DBG_OUTPUT_TX 11
-#define PIN_LPM_WAKEUP 3
-#define PIN_LED_AWAKE 13
-#define PIN_SENSOR_LIGHT A3
-#define MQTT_HOST "STUB"
-#define MQTT_PORT 0
-#define MQTT_MAX_PACKET_SIZE 80
-#define MQTT_MAX_MESSAGE_HANDLERS 1
-#define MQTT_CLIENT_ID "MONSTRENYATKO_HOME_SENSOR_1234"
-#define MQTT_SUBSCRIBE_QOS MQTT::QOS1
-#define MQTT_SUBSCRIBE_TOPIC_CFG "monstrenyatko/home/cfg/sensor/1234"
-#define MQTT_PUBLISH_QOS MQTT::QOS1
-#define MQTT_PUBLISH_TOPIC "monstrenyatko/home/sensor/1234"
-#define MQTT_PUBLISH_PERIOD_MS 15000
-#define MQTT_PUBLISH_PERIOD_MAX_MS (1*60*60*1000) // 1 hour
-#define MQTT_DISCONNECTED_IDLE_PERIOD_MS 5000
-#define NETWORK_UART_SPEED 57600
-#define NETWORK_UART_IDLE_PERIOD_LONG_MS 16
-#define NETWORK_UART_IDLE_PERIOD_SHORT_MS 2
-#define LPM_MODE LPM_MODE_IDLE
-#define LOG_UART_SPEED 4800
+#define PIN_SW_UART_RX								10
+#define PIN_SW_UART_TX								11
+#define PIN_LPM_WAKEUP								3
+#define PIN_LED_AWAKE								13
+#define PIN_SENSOR_LIGHT							A3
+#define MQTT_HOST									"STUB"
+#define MQTT_PORT									0
+#define MQTT_MAX_PACKET_SIZE						80
+#define MQTT_MAX_MESSAGE_HANDLERS					1
+#define MQTT_COMMAND_TIMEOUT_MS						10000				// 10 sec
+#define MQTT_KEEP_ALIVE_INTERVAL_SEC				30					// 30 sec
+#define MQTT_CLIENT_ID								"MONSTRENYATKO_HOME_SENSOR_1234"
+#define MQTT_SUBSCRIBE_QOS							MQTT::QOS1
+#define MQTT_SUBSCRIBE_TOPIC_CFG					"monstrenyatko/home/cfg/sensor/1234"
+#define MQTT_PUBLISH_QOS							MQTT::QOS1
+#define MQTT_PUBLISH_TOPIC							"monstrenyatko/home/sensor/1234"
+#define MQTT_PUBLISH_PERIOD_MS						15000				// 15 sec
+#define MQTT_PUBLISH_PERIOD_MAX_MS					(1*60*60*1000)		// 1 hour
+#define MQTT_CONNECT_RETRIES_QTY					5
+#define MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS			5000				// 5 sec
+#define MQTT_DISCONNECTED_IDLE_PERIOD_MS			60000				// 1 min
+#define NETWORK_UART_IDLE_PERIOD_LONG_MS			16
+#define NETWORK_UART_IDLE_PERIOD_SHORT_MS			2
+#define LPM_MODE									LPM_MODE_IDLE
+#define HW_UART_SPEED								57600
+#define SW_UART_SPEED								57600
 
 
 ////////// OBJECTS //////////
-Print* logPrinter = NULL;
 Network* network = NULL;
 MQTT::Client<Network, Countdown, MQTT_MAX_PACKET_SIZE, MQTT_MAX_MESSAGE_HANDLERS>* mqtt =
 		NULL;
 Sensor* sensorTemperature = NULL;
 Sensor* sensorLight = NULL;
 unsigned long publishPeriodMs = MQTT_PUBLISH_PERIOD_MS;
+
+SwUartConfig swUartConfig = {SW_UART_SPEED, PIN_SW_UART_RX, PIN_SW_UART_TX};
+SwUart* swUart = NULL;
+
+HwUartConfig hwUartConfig = {HW_UART_SPEED};
+HwUart* hwUart = NULL;
 
 //// DECLARATION ////
 void(* reset) (void) = 0;//declare reset function at address 0
@@ -73,16 +84,24 @@ void processMessageCfg(MQTT::MessageData& md);
  */
 void setup() {
 	////// INIT //////
+
+#if LOG_ENABLED
+	/// HW UART ///
+	{
+		hwUart = new HwUart(hwUartConfig);
+	}
+#endif
+
+	/// SF UART ///
+	{
+		swUart = new SwUart(swUartConfig);
+	}
+
 #if LOG_ENABLED
 	//// LOG ////
 	{
-		SoftwareSerial* t = new SoftwareSerial(PIN_DBG_OUTPUT_RX,
-		PIN_DBG_OUTPUT_TX);
-		// set the data rate
-		t->begin(LOG_UART_SPEED);
-		logPrinter = t;
+		Logger::init(*hwUart);
 	}
-	Logger::init(*logPrinter);
 #endif
 
 	//// LPM ////
@@ -96,7 +115,7 @@ void setup() {
 	//// NETWORK ////
 	{
 		UartNetworkConfig config;
-		config.speed = NETWORK_UART_SPEED;
+		config.uart = swUart;
 		config.readIdlePeriodLongMs = NETWORK_UART_IDLE_PERIOD_LONG_MS;
 		config.readIdlePeriodShortMs = NETWORK_UART_IDLE_PERIOD_SHORT_MS;
 		network = new UartNetwork(config);
@@ -105,7 +124,7 @@ void setup() {
 	//// MQTT ////
 	{
 		mqtt = new MQTT::Client<Network, Countdown, MQTT_MAX_PACKET_SIZE,
-		MQTT_MAX_MESSAGE_HANDLERS>(*network);
+		MQTT_MAX_MESSAGE_HANDLERS>(*network, MQTT_COMMAND_TIMEOUT_MS);
 	}
 
 	//// SENSOR ////
@@ -125,11 +144,22 @@ void setup() {
  */
 void loop() {
 	check();
-	while (!mqtt->isConnected()) {
-		connect();
-		if (!mqtt->isConnected()) {
-			Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS);
-			reset();
+	{
+		int connectCounter = 0;
+		while (!mqtt->isConnected()) {
+			connect();
+			if (!mqtt->isConnected()) {
+				connectCounter++;
+				if (connectCounter < MQTT_CONNECT_RETRIES_QTY ) {
+					LOG_PRINTFLN("Reconnect in %u ms", MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS);
+					Lpm::idle(MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS);
+				} else {
+					LOG_PRINTFLN("ERROR, Max retries qty has been reached => reset in %u ms",
+							MQTT_DISCONNECTED_IDLE_PERIOD_MS);
+					Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS);
+					reset();
+				}
+			}
 		}
 	}
 	{
@@ -171,11 +201,12 @@ void connect() {
 		return;
 	}
 	LOG_PRINTFLN("MQTT connect");
-	MQTTPacket_connectData data = MQTTPacket_connectData_initializer;
-	data.MQTTVersion = 3;
-	data.clientID.cstring = MQTT_CLIENT_ID;
-	data.cleansession = true;
-	rc = mqtt->connect(data);
+	MQTTPacket_connectData options = MQTTPacket_connectData_initializer;
+	options.MQTTVersion = 3;
+	options.clientID.cstring = MQTT_CLIENT_ID;
+	options.cleansession = true;
+	options.keepAliveInterval = MQTT_KEEP_ALIVE_INTERVAL_SEC;
+	rc = mqtt->connect(options);
 	if (rc != 0) {
 		LOG_PRINTFLN("ERROR, MQTT connect, rc:%d", rc);
 		return;

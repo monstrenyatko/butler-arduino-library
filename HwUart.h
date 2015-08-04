@@ -1,42 +1,40 @@
 /*
  *******************************************************************************
  *
- * Purpose: Logging implementation
+ * Purpose: Hardware UART adaptor
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014.
+ * Copyright Monstrenyatko 2015.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
  *******************************************************************************
  */
 
+#ifndef HWUART_H_
+#define HWUART_H_
+
 /* Internal Includes */
-#include "Logger.h"
-#include "ArduinoMqttNode.h"
 #include "Uart.h"
 /* External Includes */
 /* System Includes */
-#include <stdarg.h>
 
 
-Uart* Logger::mOut = NULL;
+struct HwUartConfig {
+	uint32_t speed;
+};
 
-void Logger::init(Uart& out) {
-	mOut = &out;
-}
+class HwUart : public Uart {
+public:
+	HwUart(const HwUartConfig&);
+	void setTimeout(unsigned long timeout);
+	size_t readBytes(char *buffer, size_t length);
+	size_t write(uint8_t c);
+	size_t println(const char c[]);
+	void flush();
+	int available(void);
+private:
+	const HwUartConfig		mConfig;
+};
 
-void Logger::println(const char* v) {
-	mOut->println(v);
-}
-
-void Logger::printfln_P(const char *fmt, ...) {
-
-	char buf[LOG_SIZE_MAX];
-	va_list ap;
-	va_start(ap, fmt);
-	vsnprintf_P(buf, LOG_SIZE_MAX, fmt, ap);
-	va_end(ap);
-	mOut->println(buf);
-}
-
+#endif /* HWUART_H_ */

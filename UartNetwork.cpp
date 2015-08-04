@@ -15,14 +15,13 @@
 #include "UartNetwork.h"
 #include "Lpm.h"
 #include "ArduinoMqttNode.h"
+#include "Uart.h"
 /* External Includes */
 /* System Includes */
 
 UartNetwork::UartNetwork(const UartNetworkConfig& config)
 :mConfig(config)
 {
-	Serial.begin(mConfig.speed);
-	while (!Serial);
 }
 
 int UartNetwork::connect(const char* hostname, int port) {
@@ -34,18 +33,18 @@ int UartNetwork::connect(uint32_t hostname, int port) {
 }
 
 int UartNetwork::read(unsigned char* buffer, int len, int timeoutMs) {
-	Serial.setTimeout(timeoutMs);
+	mConfig.uart->setTimeout(timeoutMs);
 	const int intervalMs = (timeoutMs < mConfig.readIdlePeriodLongMs)
 			? mConfig.readIdlePeriodShortMs : mConfig.readIdlePeriodLongMs;
 	int totalMs = 0;
 	int readLen = 0;
 	while(readLen < len && totalMs < timeoutMs) {
-		int available = Serial.available();
+		int available = mConfig.uart->available();
 		if (available) {
 			int needToRead = len-readLen;
-			int qty = Serial.readBytes((char*) buffer, needToRead);
+			int qty = mConfig.uart->readBytes((char*) buffer, needToRead);
 			if (qty<0) {
-				// error => return with current read len
+				// error => return with current read length
 				break;
 			}
 			buffer+=qty;
@@ -59,11 +58,11 @@ int UartNetwork::read(unsigned char* buffer, int len, int timeoutMs) {
 }
 
 int UartNetwork::write(unsigned char* buffer, int len, int timeoutMs) {
-	Serial.setTimeout(timeoutMs);
+	mConfig.uart->setTimeout(timeoutMs);
 	for (int i = 0; i < len; ++i) {
-		Serial.write(buffer[i]);
+		mConfig.uart->write(buffer[i]);
 	}
-	Serial.flush();
+	mConfig.uart->flush();
 	return len;
 }
 

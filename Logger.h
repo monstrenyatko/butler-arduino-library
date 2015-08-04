@@ -29,15 +29,16 @@
 #define LOG_PRINTFLN(fmt, ...) ((void)0)
 #endif
 
-class Print;
+/* Forward declaration */
+class Uart;
 
 class Logger {
 public:
-	static void init(Print&);
+	static void init(Uart&);
 	static void println(const char*);
 	static void printfln_P(const char *fmt, ...);
 private:
-	static Print*		mOut;
+	static Uart*		mOut;
 };
 
 #endif /* LOGGER_H_ */
