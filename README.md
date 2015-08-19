@@ -14,7 +14,7 @@ Prepare environment
 Arduino IDE
 -----------
 1. Install official IDE from http://arduino.cc/en/Main/Software.
-<br/>NOTE: In case of problems with Eclipse plugin please try with version `1.5.2` of the IDE.
+<br/>NOTE: In case of problems with Eclipse plugin please try with version `1.6.1` of the IDE.
 
 Arduino MemoryFree Library
 --------------------------
@@ -28,6 +28,13 @@ Arduino MQTT Paho Library
 Official site is https://www.eclipse.org/paho
 
 1. Download the Embedded MQTT C/C++ Client library from https://www.eclipse.org/downloads/download.php?file=/paho/arduino.zip
+2. Install it to Arduino IDE (`Sketch -> Import Library -> Add Library`)
+
+Arduino JSON library
+--------------------
+Official site is https://github.com/bblanchon/ArduinoJson
+
+1. Download the library from https://github.com/bblanchon/ArduinoJson/releases
 2. Install it to Arduino IDE (`Sketch -> Import Library -> Add Library`)
 
 Eclipse (OPTIONAL)

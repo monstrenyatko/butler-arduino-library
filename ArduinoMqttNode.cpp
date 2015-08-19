@@ -4,14 +4,20 @@
  * Purpose: Arduino "Main" functions
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014.
+ * Copyright Monstrenyatko 2014,2015.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
  *******************************************************************************
  */
 
-
+/* External Includes */
+#include <MemoryFree.h>
+#include <Arduino.h>
+#include <Countdown.h>
+#include <MQTTClient.h>
+#include <SoftwareSerial.h>
+#include <ArduinoJson.h>
 /* Internal Includes */
 #include "Logger.h"
 #include "Network.h"
@@ -22,12 +28,7 @@
 #include "ArduinoMqttNode.h"
 #include "SwUart.h"
 #include "HwUart.h"
-/* External Includes */
-#include <MemoryFree.h>
-#include <Countdown.h>
-#include <MQTTClient.h>
-/* System Includes */
-#include <SoftwareSerial.h>
+
 
 ////////// CONFIGURATION //////////
 #define PIN_SW_UART_RX								10
@@ -163,12 +164,25 @@ void loop() {
 		}
 	}
 	{
-		const uint8_t bufSize = 128;
+		const uint8_t bufSize = 64;
 		char buf[bufSize];
 		memset(buf, 0, bufSize);
-		// format is "name1:value,name2:value,nameN:value"
-		snprintf_P(buf, bufSize, PSTR("temperature:%li,light:%li"),
-				sensorTemperature->getData(), sensorLight->getData());
+		// build message payload
+		{
+			const int NUMBER_OF_ELEMENTS = 3;
+			// See JSON_OBJECT_SIZE and JSON_ARRAY_SIZE to predict buffer size
+			// lets make double the prediction
+			const int BUFFER_SIZE = JSON_OBJECT_SIZE(NUMBER_OF_ELEMENTS) * 2;
+			StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+			JsonObject& root = jsonBuffer.createObject();
+			root["v"] = 1;
+			root["temperature"] = sensorTemperature->getData();
+			root["light"] = sensorLight->getData();
+			// write to buffer
+			root.printTo(buf, bufSize);
+			check();
+		}
+		// build message
 		MQTT::Message message;
 		message.qos = MQTT_PUBLISH_QOS;
 		message.retained = false;

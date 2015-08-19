@@ -27,6 +27,11 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>Libraries/ArduinoJson</name>
+			<type>2</type>
+			<locationURI>ArduinoPivateLibPath/ArduinoJson</locationURI>
+		</link>
+		<link>
 			<name>Libraries/MQTTClient</name>
 			<type>2</type>
 			<locationURI>ArduinoPivateLibPath/MQTTClient</locationURI>

@@ -13,7 +13,9 @@
 
 /* Includes to external libraries */
 #include <MemoryFree.h>
+#include <Arduino.h>
 #include <Countdown.h>
 #include <MQTTClient.h>
 #include <SoftwareSerial.h>
+#include <ArduinoJson.h>
 
