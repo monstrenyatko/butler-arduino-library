@@ -13,7 +13,7 @@
 
 /* Internal Includes */
 #include "SwUart.h"
-#include "ArduinoMqttNode.h"
+#include "butler-arduino-sensor.h"
 /* External Includes */
 /* System Includes */
 #include <SoftwareSerial.h>

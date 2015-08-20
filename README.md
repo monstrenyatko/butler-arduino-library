@@ -1,11 +1,11 @@
-ARDUINO MQTT NODE
-=================
+BUTLER-ARDUINO-SENSOR
+=====================
 
 About
 =====
-- Simple implementation of the telemetry sensor for the Arduino
-(http://arduino.cc/en/Main/arduinoBoardNano) board.
-- The sensor uses MQTT (http://mqtt.org) protocol.
+- `Arduino` (https://www.arduino.cc) based telemetry sensor for `BUTLER` smart house framework.
+- Data is encoded in JSON format.
+- MQTT (http://mqtt.org) protocol is used for network communication.
 - Network communication is built via Serial interface.
 
 Prepare environment
@@ -116,6 +116,6 @@ done
 
 Application loop behavior
 =========================
-- Establish connection with MQTT Broker If not available.
+- Establish connection with MQTT Broker If not connected yet.
+- Get configuration If available.
 - Send telemetry data.
-- Get the configuration If available.

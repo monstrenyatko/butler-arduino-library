@@ -12,7 +12,7 @@
  */
 
 #include "SensorTemperature.h"
-#include "ArduinoMqttNode.h"
+#include "butler-arduino-sensor.h"
 /* Internal Includes */
 /* External Includes */
 /* System Includes */

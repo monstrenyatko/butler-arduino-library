@@ -25,7 +25,7 @@
 #include "SensorTemperature.h"
 #include "SensorLight.h"
 #include "Lpm.h"
-#include "ArduinoMqttNode.h"
+#include "butler-arduino-sensor.h"
 #include "SwUart.h"
 #include "HwUart.h"
 

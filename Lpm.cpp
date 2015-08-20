@@ -14,7 +14,7 @@
 /* Internal Includes */
 #include "LPM.h"
 #include "Logger.h"
-#include "ArduinoMqttNode.h"
+#include "butler-arduino-sensor.h"
 /* External Includes */
 /* System Includes */
 #include <avr/sleep.h>
