@@ -89,10 +89,10 @@ Network Connection
 
 ###### All-to-One
 Allows to connect ANY quantity of sensors with server via one PC serial interface.
-<br/>`XBeeGateway` (https://github.com/monstrenyatko/XBeeGateway) must be used.
+<br/>`butler-xbee-gateway` (https://github.com/monstrenyatko/butler-xbee-gateway) must be used.
 - Connect XBee® ZigBee device as a network interface to the board (See `Network Connection`).
 - Connect XBee® ZigBee Coordinator device to PC via serial.
-- Devices and network configuration are explained on `XBeeGateway` project page.
+- Devices and network configuration are explained on `butler-xbee-gateway` project page.
 
 ###### One-to-One 
 Allows to connect ONE sensor with server via one PC serial interface.
