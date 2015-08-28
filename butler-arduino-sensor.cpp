@@ -180,7 +180,6 @@ void loop() {
 			root["light"] = sensorLight->getData();
 			// write to buffer
 			root.printTo(buf, bufSize);
-			check();
 		}
 		// build message
 		MQTT::Message message;
