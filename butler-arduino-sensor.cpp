@@ -31,6 +31,7 @@
 
 
 ////////// CONFIGURATION //////////
+#define SENSOR_ID									"A571-C8B7"
 #define PIN_SW_UART_RX								10
 #define PIN_SW_UART_TX								11
 #define PIN_LPM_WAKEUP								3
@@ -38,20 +39,20 @@
 #define PIN_SENSOR_LIGHT							A3
 #define MQTT_HOST									"STUB"
 #define MQTT_PORT									0
-#define MQTT_MAX_PACKET_SIZE						80
+#define MQTT_MAX_PACKET_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
 #define MQTT_COMMAND_TIMEOUT_MS						8000				// 8 sec
 #define MQTT_KEEP_ALIVE_INTERVAL_SEC				32					// 32 sec
-#define MQTT_CLIENT_ID								"MONSTRENYATKO_HOME_SENSOR_1234"
+#define MQTT_CLIENT_ID								SENSOR_ID
 #define MQTT_SUBSCRIBE_QOS							MQTT::QOS1
-#define MQTT_SUBSCRIBE_TOPIC_CFG					"monstrenyatko/home/cfg/sensor/1234"
+#define MQTT_SUBSCRIBE_TOPIC_CFG					"butler/sensor/config/"SENSOR_ID
 #define MQTT_PUBLISH_QOS							MQTT::QOS1
-#define MQTT_PUBLISH_TOPIC							"monstrenyatko/home/sensor/1234"
+#define MQTT_PUBLISH_TOPIC							"butler/sensor/"SENSOR_ID
 #define MQTT_PUBLISH_PERIOD_MS						15000				// 15 sec
-#define MQTT_PUBLISH_PERIOD_MAX_MS					(1*60*60*1000)		// 1 hour
+#define MQTT_PUBLISH_PERIOD_MAX_MS					(1*60*60*1000L)		// 1 hour
 #define MQTT_CONNECT_RETRIES_QTY					2
 #define MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS			5000				// 5 sec
-#define MQTT_DISCONNECTED_IDLE_PERIOD_MS			((MQTT_KEEP_ALIVE_INTERVAL_SEC + 5) * 1000)
+#define MQTT_DISCONNECTED_IDLE_PERIOD_MS			((MQTT_KEEP_ALIVE_INTERVAL_SEC + 5) * 1000L)
 #define NETWORK_UART_IDLE_PERIOD_LONG_MS			16
 #define NETWORK_UART_IDLE_PERIOD_SHORT_MS			2
 #define LPM_MODE									LPM_MODE_IDLE
@@ -136,7 +137,8 @@ void setup() {
 
 	////// INIT END //////
 	LOG_PRINTFLN("#################################");
-	LOG_PRINTFLN("###    MQTT Node is started   ###");
+	LOG_PRINTFLN("###      Butler Sensor        ###");
+	LOG_PRINTFLN("### ID          : %11s ###", SENSOR_ID);
 	LOG_PRINTFLN("#################################");
 }
 
@@ -169,13 +171,14 @@ void loop() {
 		memset(buf, 0, bufSize);
 		// build message payload
 		{
-			const int NUMBER_OF_ELEMENTS = 3;
+			const int NUMBER_OF_ELEMENTS = 4;
 			// See JSON_OBJECT_SIZE and JSON_ARRAY_SIZE to predict buffer size
 			// lets make double the prediction
 			const int BUFFER_SIZE = JSON_OBJECT_SIZE(NUMBER_OF_ELEMENTS) * 2;
 			StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 			JsonObject& root = jsonBuffer.createObject();
 			root["v"] = 1;
+			root["id"] = SENSOR_ID;
 			root["temperature"] = sensorTemperature->getData();
 			root["light"] = sensorLight->getData();
 			// write to buffer
