@@ -40,8 +40,8 @@
 #define MQTT_PORT									0
 #define MQTT_MAX_PACKET_SIZE						80
 #define MQTT_MAX_MESSAGE_HANDLERS					1
-#define MQTT_COMMAND_TIMEOUT_MS						10000				// 10 sec
-#define MQTT_KEEP_ALIVE_INTERVAL_SEC				30					// 30 sec
+#define MQTT_COMMAND_TIMEOUT_MS						8000				// 8 sec
+#define MQTT_KEEP_ALIVE_INTERVAL_SEC				32					// 32 sec
 #define MQTT_CLIENT_ID								"MONSTRENYATKO_HOME_SENSOR_1234"
 #define MQTT_SUBSCRIBE_QOS							MQTT::QOS1
 #define MQTT_SUBSCRIBE_TOPIC_CFG					"monstrenyatko/home/cfg/sensor/1234"
@@ -49,9 +49,9 @@
 #define MQTT_PUBLISH_TOPIC							"monstrenyatko/home/sensor/1234"
 #define MQTT_PUBLISH_PERIOD_MS						15000				// 15 sec
 #define MQTT_PUBLISH_PERIOD_MAX_MS					(1*60*60*1000)		// 1 hour
-#define MQTT_CONNECT_RETRIES_QTY					5
+#define MQTT_CONNECT_RETRIES_QTY					2
 #define MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS			5000				// 5 sec
-#define MQTT_DISCONNECTED_IDLE_PERIOD_MS			60000				// 1 min
+#define MQTT_DISCONNECTED_IDLE_PERIOD_MS			((MQTT_KEEP_ALIVE_INTERVAL_SEC + 5) * 1000)
 #define NETWORK_UART_IDLE_PERIOD_LONG_MS			16
 #define NETWORK_UART_IDLE_PERIOD_SHORT_MS			2
 #define LPM_MODE									LPM_MODE_IDLE
