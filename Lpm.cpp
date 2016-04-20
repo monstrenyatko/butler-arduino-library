@@ -67,6 +67,7 @@ ISR (TIMER2_COMPA_vect)
 
 void Lpm::init(const LpmConfig& config) {
 	mConfig = config;
+	pinMode(mConfig.pinLedAwake, OUTPUT);
 	digitalWrite(mConfig.pinLedAwake, HIGH);
 	resetClock();
 	clock_0_TIMSK = TIMSK0;
