@@ -45,9 +45,9 @@
 #define MQTT_KEEP_ALIVE_INTERVAL_SEC				32					// 32 sec
 #define MQTT_CLIENT_ID								SENSOR_ID
 #define MQTT_SUBSCRIBE_QOS							MQTT::QOS1
-#define MQTT_SUBSCRIBE_TOPIC_CFG					"butler/sensor/config/"SENSOR_ID
+#define MQTT_SUBSCRIBE_TOPIC_CFG					"butler/sensor/"SENSOR_ID"/config"
 #define MQTT_PUBLISH_QOS							MQTT::QOS1
-#define MQTT_PUBLISH_TOPIC							"butler/sensor/"SENSOR_ID
+#define MQTT_PUBLISH_TOPIC							"butler/sensor/"SENSOR_ID"/data"
 #define MQTT_PUBLISH_PERIOD_MS						15000				// 15 sec
 #define MQTT_PUBLISH_PERIOD_MAX_MS					(1*60*60*1000L)		// 1 hour
 #define MQTT_CONNECT_RETRIES_QTY					2
@@ -171,16 +171,24 @@ void loop() {
 		memset(buf, 0, bufSize);
 		// build message payload
 		{
-			const int NUMBER_OF_ELEMENTS = 4;
+			const int NUMBER_OF_SENSORS = 2;
 			// See JSON_OBJECT_SIZE and JSON_ARRAY_SIZE to predict buffer size
 			// lets make double the prediction
-			const int BUFFER_SIZE = JSON_OBJECT_SIZE(NUMBER_OF_ELEMENTS) * 2;
+			const int BUFFER_SIZE = 2 * (JSON_OBJECT_SIZE(3)
+					+ JSON_ARRAY_SIZE(NUMBER_OF_SENSORS)
+					+ NUMBER_OF_SENSORS*JSON_OBJECT_SIZE(1));
 			StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+			JsonObject& temp = jsonBuffer.createObject();
+			temp["temp"] = sensorTemperature->getData();
+			JsonObject& light = jsonBuffer.createObject();
+			light["light"] = sensorLight->getData();
+			JsonArray& data = jsonBuffer.createArray();
+			data.add(temp);
+			data.add(light);
 			JsonObject& root = jsonBuffer.createObject();
 			root["v"] = 1;
 			root["id"] = SENSOR_ID;
-			root["temperature"] = sensorTemperature->getData();
-			root["light"] = sensorLight->getData();
+			root["data"] = data;
 			// write to buffer
 			root.printTo(buf, bufSize);
 		}

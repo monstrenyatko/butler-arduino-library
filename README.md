@@ -14,7 +14,7 @@ Prepare environment
 Arduino IDE
 -----------
 1. Install official IDE from http://arduino.cc/en/Main/Software.
-<br/>NOTE: In case of problems with Eclipse plugin please try with version `1.6.1` of the IDE.
+<br/>NOTE: In case of problems with Eclipse plugin please try with version `1.6.5` of the IDE.
 
 Arduino MemoryFree Library
 --------------------------
@@ -40,7 +40,7 @@ Official site is https://github.com/bblanchon/ArduinoJson
 Eclipse (OPTIONAL)
 ------------------
 1. Install Eclipse IDE for C/C++ Developers (With CDT plugin).
-2. Use Eclipse market to install Arduino plugin
+2. Use Eclipse market to install `Arduino eclipse IDE` plugin
 (http://marketplace.eclipse.org/content/arduino-eclipse-ide)
 3. Configure the path to Arduino IDE (`Preferences -> Arduino`)
 
