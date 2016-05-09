@@ -32,6 +32,11 @@
 			<locationURI>ArduinoPrivateLibPath/ArduinoJson</locationURI>
 		</link>
 		<link>
+			<name>Libraries/DHT-sensor-library-1.2.3</name>
+			<type>2</type>
+			<locationURI>ArduinoPrivateLibPath/DHT-sensor-library-1.2.3</locationURI>
+		</link>
+		<link>
 			<name>Libraries/MQTTClient</name>
 			<type>2</type>
 			<locationURI>ArduinoPrivateLibPath/MQTTClient</locationURI>

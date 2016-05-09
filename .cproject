@@ -24,6 +24,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/MemoryFree}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/MQTTClient}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/SoftwareSerial}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/DHT-sensor-library-1.2.3}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/ArduinoJson}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/ArduinoJson/src}&quot;"/>
 								</option>
@@ -36,6 +37,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/MemoryFree}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/MQTTClient}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/SoftwareSerial}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/DHT-sensor-library-1.2.3}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/ArduinoJson}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/butler-arduino-sensor/Libraries/ArduinoJson/src}&quot;"/>
 								</option>
@@ -65,11 +67,11 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
-		<configuration configurationName="Release">
-			<resource resourceType="PROJECT" workspacePath="/butler-arduino-sensor"/>
-		</configuration>
 		<configuration configurationName="ReleasePro"/>
 		<configuration configurationName="ReleaseNano">
+			<resource resourceType="PROJECT" workspacePath="/butler-arduino-sensor"/>
+		</configuration>
+		<configuration configurationName="Release">
 			<resource resourceType="PROJECT" workspacePath="/butler-arduino-sensor"/>
 		</configuration>
 	</storageModule>

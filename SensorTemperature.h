@@ -19,11 +19,16 @@
 /* External Includes */
 /* System Includes */
 
+class DHT;
 
 class SensorTemperature: public Sensor {
 public:
+	SensorTemperature(DHT&);
 	~SensorTemperature();
-	int32_t getData();
+	SensorValue getData();
+	bool verify(SensorValue v);
+private:
+	DHT&	mSensor;
 };
 
 #endif /* SENSOR_TEMPERATURE_H_ */

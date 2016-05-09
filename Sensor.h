@@ -17,12 +17,14 @@
 /* Internal Includes */
 /* External Includes */
 /* System Includes */
-#include <stdint.h>
+
+typedef float SensorValue;
 
 class Sensor {
 public:
 	virtual ~Sensor() {}
-	virtual int32_t getData() = 0;
+	virtual SensorValue getData() = 0;
+	virtual bool verify(SensorValue) = 0;
 };
 
 #endif /* SENSOR_H_ */

@@ -15,13 +15,20 @@
 #include "butler-arduino-sensor.h"
 /* Internal Includes */
 /* External Includes */
-/* System Includes */
+#include <DHT.h>
 
+
+SensorTemperature::SensorTemperature(DHT& sensor)
+: mSensor(sensor)
+{}
 
 SensorTemperature::~SensorTemperature() {
 }
 
-int32_t SensorTemperature::getData() {
-	//TODO: add real implementation
-	return 16;
+SensorValue SensorTemperature::getData() {
+	return mSensor.readTemperature();
+}
+
+bool SensorTemperature::verify(SensorValue v) {
+	return !isnan(v);
 }

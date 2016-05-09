@@ -21,21 +21,30 @@ Arduino MemoryFree Library
 Official site is http://playground.arduino.cc/Code/AvailableMemory
 
 1. Download the library from https://github.com/maniacbug/MemoryFree.
-2. Install it to Arduino IDE (`Sketch -> Import Library -> Add Library`)
+2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
 
 Arduino MQTT Paho Library
 -------------------------
 Official site is https://www.eclipse.org/paho
 
 1. Download the Embedded MQTT C/C++ Client library from https://www.eclipse.org/downloads/download.php?file=/paho/arduino.zip
-2. Install it to Arduino IDE (`Sketch -> Import Library -> Add Library`)
+2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
 
-Arduino JSON library
+Arduino JSON Library
 --------------------
 Official site is https://github.com/bblanchon/ArduinoJson
 
 1. Download the library from https://github.com/bblanchon/ArduinoJson/releases
-2. Install it to Arduino IDE (`Sketch -> Import Library -> Add Library`)
+2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
+
+<br/> NOTE: In case of compilation problem of the library try to remove
+`third-party` and `test` directories from the library.
+
+Arduino DHT Sensor Library
+--------------------------
+
+1. Download the library with version `1.2.3` from https://github.com/adafruit/DHT-sensor-library/releases
+2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
 
 Eclipse (OPTIONAL)
 ------------------
@@ -114,8 +123,38 @@ do
 done
 ```
 
+Sensor Connection
+-----------------
+
+Information abous sensor is available on https://learn.adafruit.com/dht
+
+Default configuration:
+- DHT11 sensor type
+- Pin 2 is used to read data from sensor
+
+Please follow the wiring instruction from https://learn.adafruit.com/dht/connecting-to-a-dhtxx-sensor
+
+Application configuration
+-------------------------
+
+#### Identifier
+
+Unique string identifier. Must be unique in whole sensor network.
+Don't forget to update `SENSOR_ID` value.
+
+#### Logger
+
+Change `LOG_ENABLED` to `0` in `Logger.h` to disable or to `1` for enabling.
+
+#### Publishing delay
+
+Delay between data publishing to the server.
+Default publishing period is `15` seconds.
+Update `MQTT_PUBLISH_PERIOD_MS` to desired value. Value must be in milliseconds.
+
 Application loop behavior
 =========================
 - Establish connection with MQTT Broker If not connected yet.
 - Get configuration If available.
-- Send telemetry data.
+- Collect and send telemetry data.
+- Sleep until time for next iteration.

@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- * Purpose: Light Sensor implementation
+ * Purpose: Humidity Sensor implementation
  *
  *******************************************************************************
  * Copyright Monstrenyatko 2014.
@@ -11,21 +11,24 @@
  *******************************************************************************
  */
 
-#include "SensorLight.h"
-#include "butler-arduino-sensor.h"
+#ifndef SENSOR_HUMIDITY_H_
+#define SENSOR_HUMIDITY_H_
+
+#include "Sensor.h"
 /* Internal Includes */
 /* External Includes */
 /* System Includes */
 
+class DHT;
 
-SensorLight::SensorLight(uint8_t analogPin)
-:mPin(analogPin)
-{}
+class SensorHumidity: public Sensor {
+public:
+	SensorHumidity(DHT&);
+	~SensorHumidity();
+	SensorValue getData();
+	bool verify(SensorValue v);
+private:
+	DHT&	mSensor;
+};
 
-SensorLight::~SensorLight() {
-}
-
-int32_t SensorLight::getData() {
-	return map(analogRead(mPin), 0, 1024, 0, 100);
-}
-
+#endif /* SENSOR_HUMIDITY_H_ */

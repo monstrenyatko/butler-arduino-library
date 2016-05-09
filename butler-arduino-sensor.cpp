@@ -18,12 +18,13 @@
 #include <MQTTClient.h>
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
+#include <DHT.h>
 /* Internal Includes */
 #include "Logger.h"
 #include "Network.h"
 #include "UartNetwork.h"
 #include "SensorTemperature.h"
-#include "SensorLight.h"
+#include "SensorHumidity.h"
 #include "Lpm.h"
 #include "butler-arduino-sensor.h"
 #include "SwUart.h"
@@ -31,15 +32,17 @@
 
 
 ////////// CONFIGURATION //////////
+#define DHTPIN										2
+#define DHTTYPE										DHT11
 #define SENSOR_ID									"A571-C8B7"
 #define PIN_SW_UART_RX								10
 #define PIN_SW_UART_TX								11
 #define PIN_LPM_WAKEUP								3
 #define PIN_LED_AWAKE								13
-#define PIN_SENSOR_LIGHT							A3
 #define MQTT_HOST									"STUB"
 #define MQTT_PORT									0
-#define MQTT_MAX_PACKET_SIZE						96
+#define MQTT_MAX_PACKET_SIZE						128
+#define MQTT_MAX_PAYLOAD_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
 #define MQTT_COMMAND_TIMEOUT_MS						8000				// 8 sec
 #define MQTT_KEEP_ALIVE_INTERVAL_SEC				32					// 32 sec
@@ -64,8 +67,9 @@
 Network* network = NULL;
 MQTT::Client<Network, Countdown, MQTT_MAX_PACKET_SIZE, MQTT_MAX_MESSAGE_HANDLERS>* mqtt =
 		NULL;
+DHT* dht = NULL;
 Sensor* sensorTemperature = NULL;
-Sensor* sensorLight = NULL;
+Sensor* sensorHumidity = NULL;
 unsigned long publishPeriodMs = MQTT_PUBLISH_PERIOD_MS;
 
 SwUartConfig swUartConfig = {SW_UART_SPEED, PIN_SW_UART_RX, PIN_SW_UART_TX};
@@ -131,8 +135,10 @@ void setup() {
 
 	//// SENSOR ////
 	{
-		sensorTemperature = new SensorTemperature;
-		sensorLight = new SensorLight(PIN_SENSOR_LIGHT);
+		dht = new DHT(DHTPIN, DHTTYPE);
+		dht->begin();
+		sensorTemperature = new SensorTemperature(*dht);
+		sensorHumidity = new SensorHumidity(*dht);
 	}
 
 	////// INIT END //////
@@ -166,7 +172,7 @@ void loop() {
 		}
 	}
 	{
-		const uint8_t bufSize = 64;
+		const uint8_t bufSize = MQTT_MAX_PAYLOAD_SIZE;
 		char buf[bufSize];
 		memset(buf, 0, bufSize);
 		// build message payload
@@ -178,19 +184,32 @@ void loop() {
 					+ JSON_ARRAY_SIZE(NUMBER_OF_SENSORS)
 					+ NUMBER_OF_SENSORS*JSON_OBJECT_SIZE(1));
 			StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
-			JsonObject& temp = jsonBuffer.createObject();
-			temp["temp"] = sensorTemperature->getData();
-			JsonObject& light = jsonBuffer.createObject();
-			light["light"] = sensorLight->getData();
 			JsonArray& data = jsonBuffer.createArray();
-			data.add(temp);
-			data.add(light);
+			JsonObject& temp = jsonBuffer.createObject();
+			{
+				SensorValue v = sensorTemperature->getData();
+				if (sensorTemperature->verify(v)) {
+					temp["temp"] = v;
+					data.add(temp);
+				}
+			}
+			JsonObject& humid = jsonBuffer.createObject();
+			{
+				SensorValue v = sensorHumidity->getData();
+				if (sensorHumidity->verify(v)) {
+					humid["humid"] = v;
+					data.add(humid);
+				}
+			}
 			JsonObject& root = jsonBuffer.createObject();
 			root["v"] = 1;
 			root["id"] = SENSOR_ID;
 			root["data"] = data;
 			// write to buffer
-			root.printTo(buf, bufSize);
+			size_t size = root.printTo(buf, bufSize);
+			if (size+1 >= bufSize) {
+				LOG_PRINTFLN("WARN, Big payload: %d", size);
+			}
 		}
 		// build message
 		MQTT::Message message;
@@ -227,7 +246,7 @@ void connect() {
 	LOG_PRINTFLN("MQTT connect");
 	MQTTPacket_connectData options = MQTTPacket_connectData_initializer;
 	options.MQTTVersion = 3;
-	options.clientID.cstring = MQTT_CLIENT_ID;
+	options.clientID.cstring = (char*)MQTT_CLIENT_ID;
 	options.cleansession = true;
 	options.keepAliveInterval = MQTT_KEEP_ALIVE_INTERVAL_SEC;
 	rc = mqtt->connect(options);
@@ -248,13 +267,13 @@ void printMessage(const char* topic, const char* payload, MQTT::Message msg) {
 	LOG_PRINTFLN(
 			"Message arrived: qos %d, retained %d, dup %d, packetid %d, topic:[%s], payload:[%s]",
 			msg.qos, msg.retained, msg.dup, msg.id, topic, payload);
-
 }
 
 void processMessageCfg(MQTT::MessageData& md) {
 	const MQTT::Message& msg = md.message;
 	const char* tokenSep = ",";
 	const char blockSep = ':';
+	// TODO: change format to JSON
 	// format is "name1:value,name2:value,nameN:value"
 	char payload[msg.payloadlen + 1];
 	memcpy(payload, msg.payload, msg.payloadlen);

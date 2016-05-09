@@ -18,4 +18,5 @@
 #include <MQTTClient.h>
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
+#include <DHT.h>
 
