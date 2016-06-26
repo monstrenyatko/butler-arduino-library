@@ -13,9 +13,9 @@
 
 /* Internal Includes */
 #include "Logger.h"
-#include "butler-arduino-sensor.h"
 #include "Uart.h"
 /* External Includes */
+#include <Arduino.h>
 /* System Includes */
 #include <stdarg.h>
 

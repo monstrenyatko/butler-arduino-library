@@ -12,7 +12,6 @@
  */
 
 #include "SensorTemperature.h"
-#include "butler-arduino-sensor.h"
 /* Internal Includes */
 /* External Includes */
 #include <DHT.h>

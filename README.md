@@ -14,7 +14,7 @@ Prepare environment
 Arduino IDE
 -----------
 1. Install official IDE from http://arduino.cc/en/Main/Software.
-<br/>NOTE: In case of problems with Eclipse plugin please try with version `1.6.5` of the IDE.
+<br/>NOTE: In case of problems with Eclipse plugin please try with version `1.6.9` of the IDE.
 
 Arduino MemoryFree Library
 --------------------------
@@ -34,24 +34,22 @@ Arduino JSON Library
 --------------------
 Official site is https://github.com/bblanchon/ArduinoJson
 
-1. Download the library from https://github.com/bblanchon/ArduinoJson/releases
-2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
-
-<br/> NOTE: In case of compilation problem of the library try to remove
-`third-party` and `test` directories from the library.
+1. Open Arduino IDE libraries manager (`Sketch -> Include Library -> Manage Libraries`)
+2. Search the `ArduinoJson` keyword
+3. Install the `ArduinoJson` by Benoit Blanchon. Verified version is `5.4.0`.
 
 Arduino DHT Sensor Library
 --------------------------
-
-1. Download the library with version `1.2.3` from https://github.com/adafruit/DHT-sensor-library/releases
-2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
+1. Open Arduino IDE libraries manager (`Sketch -> Include Library -> Manage Libraries`)
+2. Search the `DHT` keyword
+3. Install the DHT Sensor Library for DHT11, DHT22. Verified version is `1.2.3`.
 
 Eclipse (OPTIONAL)
 ------------------
 1. Install Eclipse IDE for C/C++ Developers (With CDT plugin).
-2. Use Eclipse market to install `Arduino eclipse IDE` plugin
-(http://marketplace.eclipse.org/content/arduino-eclipse-ide)
-3. Configure the path to Arduino IDE (`Preferences -> Arduino`)
+2. Use Eclipse market to install `Arduino Eclipse IDE` plugin
+(http://marketplace.eclipse.org/content/arduino-eclipse-ide).
+V3 of the plugin is required. See http://eclipse.baeyens.it for more details.
 
 Building
 ========
@@ -61,17 +59,17 @@ Two options are available.
 Arduino IDE
 -----------
 1. Import the project (`File -> Open`)
-2. Choose the board in `Tool -> Board` + `Tool -> Processor` + `Tool -> Serial Port`
+2. Choose the board in `Tools -> Board` + `Tools -> Processor` + `Tools -> Port`
 3. `Sketch -> Verify/Compile` (to build)
-4. `File -> Upload` (load to the board)
+4. `Sketch -> Upload` (load to the board)
 
 Eclipse
 -------
 1. Import the project (`File -> Import -> General -> Existing Projects into Workspace`)
 2. Choose the board in `Project -> Properties -> Arduino`
-3. `Arduino -> verify` (to build)
-4. `Arduino -> Upload Sketch` (load to the board)
-
+3. Import libraries if something missed (`File -> Import -> Arduino -> Import Arduino Libraries...`).
+4. `Arduino -> verify` (to build)
+5. `Arduino -> Upload Sketch` (load to the board)
 
 Usage
 =====
@@ -80,9 +78,9 @@ Debug output
 ------------
 - The HardwareSerial is used for debug purpose.
 - Serial speed is configured to `57600 bit/s`.
-- You can use command like `picocom -c -b 57600 <path to serial>` to get the output.
+- You can use command like `picocom -i -r -c -b 57600 <path to serial>` to get the output.
 
-<br/>FYI: You must stop `picocom` by command `C-a C-x` if you are going to reload your Sketch to the board.
+<br/>FYI: You must stop `picocom` by command `C-a C-q` if you are going to reload your Sketch to the board.
 
 Network Connection
 ------------------
@@ -126,7 +124,7 @@ done
 Sensor Connection
 -----------------
 
-Information abous sensor is available on https://learn.adafruit.com/dht
+Information about sensor is available on https://learn.adafruit.com/dht
 
 Default configuration:
 - DHT11 sensor type

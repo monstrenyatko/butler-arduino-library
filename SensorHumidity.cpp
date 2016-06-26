@@ -11,7 +11,6 @@
  *******************************************************************************
  */
 
-#include "butler-arduino-sensor.h"
 #include "SensorHumidity.h"
 /* Internal Includes */
 /* External Includes */

@@ -14,8 +14,8 @@
 /* Internal Includes */
 #include "LPM.h"
 #include "Logger.h"
-#include "butler-arduino-sensor.h"
 /* External Includes */
+#include <Arduino.h>
 /* System Includes */
 #include <avr/sleep.h>
 #include <avr/wdt.h>
@@ -169,7 +169,9 @@ void Lpm::updateSysClockBig() {
 	double remainder = TCNT2/LPM_CLOCK_BIG_TICKS_PER_1_MS;
 	tmp += round(remainder); //add the remainder with rounding
 	extern volatile unsigned long timer0_millis;
+	noInterrupts();
 	timer0_millis += tmp;
+	interrupts();
 }
 
 void Lpm::startClockSmall() {
@@ -193,7 +195,9 @@ void Lpm::updateSysClockSmall() {
 	double remainder = TCNT2/LPM_CLOCK_SMALL_TICKS_PER_1_MS;
 	tmp += round(remainder); //add the remainder with rounding
 	extern volatile unsigned long timer0_millis;
+	noInterrupts();
 	timer0_millis += tmp;
+	interrupts();
 }
 
 void Lpm::stopClock() {

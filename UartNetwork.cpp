@@ -14,7 +14,6 @@
 /* Internal Includes */
 #include "UartNetwork.h"
 #include "Lpm.h"
-#include "butler-arduino-sensor.h"
 #include "Uart.h"
 /* External Includes */
 /* System Includes */
