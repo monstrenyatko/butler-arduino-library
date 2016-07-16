@@ -88,6 +88,7 @@ void restoreSysClock() {
 }
 
 void Lpm::idle(uint32_t ms) {
+	digitalWrite(mConfig.pinLedAwake, LOW);
 	unsigned long start = millis();
 	while (ms > 0) {
 		if (ms>1) {
@@ -100,7 +101,7 @@ void Lpm::idle(uint32_t ms) {
 			}
 			// go to low power
 			{
-				digitalWrite(mConfig.pinLedAwake, LOW);
+
 				switch(mConfig.mode) {
 					case LPM_MODE_PWR_SAVE:
 						set_sleep_mode(SLEEP_MODE_PWR_SAVE);
@@ -108,7 +109,7 @@ void Lpm::idle(uint32_t ms) {
 					case LPM_MODE_IDLE:
 					default:
 						set_sleep_mode(SLEEP_MODE_IDLE);
-					break;
+						break;
 				}
 				cli();
 				sleep_enable();
@@ -124,7 +125,6 @@ void Lpm::idle(uint32_t ms) {
 				sei();
 				power_all_enable();
 				// awake from here
-				digitalWrite(mConfig.pinLedAwake, HIGH);
 			}
 			stopClock();
 			if(clockSmall) {
@@ -146,6 +146,7 @@ void Lpm::idle(uint32_t ms) {
 			}
 		}
 	}
+	digitalWrite(mConfig.pinLedAwake, HIGH);
 }
 
 void Lpm::startClockBig() {

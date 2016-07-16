@@ -31,12 +31,12 @@
 
 
 ////////// CONFIGURATION //////////
-#define DHTPIN										2
+#define SENSOR_ID									"4A16-AEB6"
 #define DHTTYPE										DHT11
-#define SENSOR_ID									"A571-C8B7"
+#define PIN_DHT										2
 #define PIN_SW_UART_RX								10
 #define PIN_SW_UART_TX								11
-#define PIN_LPM_WAKEUP								3
+#define PIN_LPM_NETWORK								9
 #define PIN_LED_AWAKE								13
 #define MQTT_HOST									"STUB"
 #define MQTT_PORT									0
@@ -44,19 +44,22 @@
 #define MQTT_MAX_PAYLOAD_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
 #define MQTT_COMMAND_TIMEOUT_MS						8000				// 8 sec
-#define MQTT_KEEP_ALIVE_INTERVAL_SEC				32					// 32 sec
+#define MQTT_KEEP_ALIVE_INTERVAL_SEC				5*60				// 5 min
 #define MQTT_CLIENT_ID								SENSOR_ID
 #define MQTT_SUBSCRIBE_QOS							MQTT::QOS1
 #define MQTT_SUBSCRIBE_TOPIC_CFG					"butler/sensor/"SENSOR_ID"/config"
-#define MQTT_PUBLISH_QOS							MQTT::QOS1
+#define MQTT_PUBLISH_QOS							MQTT::QOS0
 #define MQTT_PUBLISH_TOPIC							"butler/sensor/"SENSOR_ID"/data"
-#define MQTT_PUBLISH_PERIOD_MS						15000				// 15 sec
-#define MQTT_PUBLISH_PERIOD_MAX_MS					(1*60*60*1000L)		// 1 hour
-#define MQTT_CONNECT_RETRIES_QTY					2
+#define MQTT_LISTEN_TIME_MS							1000				// 1 sec
+#define MQTT_PUBLISH_PERIOD_MS						3*60*1000L			// 3 min
+#define MQTT_PUBLISH_PERIOD_MAX_MS					((MQTT_KEEP_ALIVE_INTERVAL_SEC - 5) * 1000L)
+#define MQTT_CONNECT_RETRIES_QTY					5
 #define MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS			5000				// 5 sec
 #define MQTT_DISCONNECTED_IDLE_PERIOD_MS			((MQTT_KEEP_ALIVE_INTERVAL_SEC + 5) * 1000L)
 #define NETWORK_UART_IDLE_PERIOD_LONG_MS			16
 #define NETWORK_UART_IDLE_PERIOD_SHORT_MS			2
+#define NETWORK_HIBERNATE_DELAY_MS					2000
+#define NETWORK_WAKE_UP_DELAY_MS					10000
 #define LPM_MODE									LPM_MODE_IDLE
 #define HW_UART_SPEED								57600
 #define SW_UART_SPEED								57600
@@ -82,6 +85,8 @@ void(* reset) (void) = 0;//declare reset function at address 0
 void check();
 void connect();
 void processMessageCfg(MQTT::MessageData& md);
+void networkHibernate(uint32_t);
+void networkWakeUp(uint32_t);
 
 ////////// IMPLEMENTATION //////////
 /**
@@ -134,7 +139,7 @@ void setup() {
 
 	//// SENSOR ////
 	{
-		dht = new DHT(DHTPIN, DHTTYPE);
+		dht = new DHT(PIN_DHT, DHTTYPE);
 		dht->begin();
 		sensorTemperature = new SensorTemperature(*dht);
 		sensorHumidity = new SensorHumidity(*dht);
@@ -145,6 +150,10 @@ void setup() {
 	LOG_PRINTFLN("###      Butler Sensor        ###");
 	LOG_PRINTFLN("### ID          : %11s ###", SENSOR_ID);
 	LOG_PRINTFLN("#################################");
+
+	//// NETWORK START ////
+	pinMode(PIN_LPM_NETWORK, OUTPUT);
+	networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
 }
 
 /**
@@ -162,9 +171,10 @@ void loop() {
 					LOG_PRINTFLN("Reconnect in %u ms", MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS);
 					Lpm::idle(MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS);
 				} else {
-					LOG_PRINTFLN("ERROR, Max retries qty has been reached => reset in %u ms",
+					LOG_PRINTFLN("ERROR, Max retries qty has been reached => reset in %lu ms",
 							MQTT_DISCONNECTED_IDLE_PERIOD_MS);
-					Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS);
+					networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
+					Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS - NETWORK_HIBERNATE_DELAY_MS);
 					reset();
 				}
 			}
@@ -223,7 +233,14 @@ void loop() {
 		}
 	}
 	LOG_PRINTFLN("Idle for %lu ms", publishPeriodMs);
-	mqtt->yield(publishPeriodMs);
+	mqtt->yield(MQTT_LISTEN_TIME_MS);
+	networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
+	Lpm::idle(publishPeriodMs
+			- MQTT_LISTEN_TIME_MS
+			- NETWORK_HIBERNATE_DELAY_MS
+			- NETWORK_WAKE_UP_DELAY_MS
+	);
+	networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
 }
 
 void check() {
@@ -300,4 +317,14 @@ void processMessageCfg(MQTT::MessageData& md) {
 		// Find the next token
 		token = strtok(0, tokenSep);
 	}
+}
+
+void networkHibernate(uint32_t delay) {
+	Lpm::idle(delay);
+	digitalWrite(PIN_LPM_NETWORK, HIGH);
+}
+
+void networkWakeUp(uint32_t delay) {
+	digitalWrite(PIN_LPM_NETWORK, LOW);
+	Lpm::idle(delay);
 }

@@ -18,7 +18,7 @@
 /* External Includes */
 /* System Includes */
 
-#define LOG_ENABLED 1
+#define LOG_ENABLED 0
 #define LOG_SIZE_MAX 128
 
 #if LOG_ENABLED
