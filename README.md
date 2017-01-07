@@ -14,35 +14,41 @@ Prepare environment
 Arduino IDE
 -----------
 1. Install official IDE from http://arduino.cc/en/Main/Software.
-<br/>NOTE: In case of problems with Eclipse plugin please try with version `1.6.9` of the IDE.
+<br/>**Note**: In case of problems with Eclipse plugin please try with version `1.6.9` of the IDE.
+
+Arduino SoftwareSerial Library
+------------------------------
+Official site is https://www.arduino.cc/en/Reference/SoftwareSerial.
+
+1. Open Arduino IDE libraries manager (`Sketch -> Include Library -> Manage Libraries`)
+2. Install the `SoftwareSerial` by Arduino
 
 Arduino MemoryFree Library
 --------------------------
-Official site is http://playground.arduino.cc/Code/AvailableMemory
+Official site is http://playground.arduino.cc/Code/AvailableMemory.
 
-1. Download the library from https://github.com/maniacbug/MemoryFree.
+1. Download the library from https://github.com/McNeight/MemoryFree
 2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
 
-Arduino MQTT Paho Library
--------------------------
-Official site is https://www.eclipse.org/paho
+Arduino MQTT Client Library
+---------------------------
+Official site is https://github.com/monstrenyatko/ArduinoMqtt
 
-1. Download the Embedded MQTT C/C++ Client library from https://www.eclipse.org/downloads/download.php?file=/paho/arduino.zip
-2. Install it to Arduino IDE (`Sketch -> Include Library -> Add ZIP Library`)
+1. Open Arduino IDE libraries manager (`Sketch -> Include Library -> Manage Libraries`)
+2. Install the `ArduinoMqtt` by Oleg Kovalenko. Verified version is `1.0.1`
 
 Arduino JSON Library
 --------------------
 Official site is https://github.com/bblanchon/ArduinoJson
 
 1. Open Arduino IDE libraries manager (`Sketch -> Include Library -> Manage Libraries`)
-2. Search the `ArduinoJson` keyword
-3. Install the `ArduinoJson` by Benoit Blanchon. Verified version is `5.4.0`.
+2. Install the `ArduinoJson` by Benoit Blanchon. Verified version is `5.8.0`
 
 Arduino DHT Sensor Library
 --------------------------
 1. Open Arduino IDE libraries manager (`Sketch -> Include Library -> Manage Libraries`)
-2. Search the `DHT` keyword
-3. Install the DHT Sensor Library for DHT11, DHT22. Verified version is `1.2.3`.
+2. Install the `DHT Sensor Library` for DHT11, DHT22. Verified version is `1.3.0`
+3. Install dependency library `Adafruit Unified Sensor`
 
 Eclipse (OPTIONAL)
 ------------------
@@ -54,22 +60,12 @@ V3 of the plugin is required. See http://eclipse.baeyens.it for more details.
 Building
 ========
 
-Two options are available.
-
 Arduino IDE
 -----------
 1. Import the project (`File -> Open`)
 2. Choose the board in `Tools -> Board` + `Tools -> Processor` + `Tools -> Port`
 3. `Sketch -> Verify/Compile` (to build)
 4. `Sketch -> Upload` (load to the board)
-
-Eclipse
--------
-1. Import the project (`File -> Import -> General -> Existing Projects into Workspace`)
-2. Choose the board in `Project -> Properties -> Arduino`
-3. Import libraries if something missed (`File -> Import -> Arduino -> Import Arduino Libraries...`).
-4. `Arduino -> verify` (to build)
-5. `Arduino -> Upload Sketch` (load to the board)
 
 Usage
 =====
@@ -78,14 +74,15 @@ Debug output
 ------------
 - The HardwareSerial is used for debug purpose.
 - Serial speed is configured to `57600 bit/s`.
-- You can use command like `picocom -i -r -c -b 57600 <path to serial>` to get the output.
+- You can use command like `picocom -r -c -b 57600 <path to serial>` to get the output
+or `picocom -i -r -c -b 57600 <path to serial>` to avoid board reset (some times doesn't work).
 
 <br/>FYI: You must stop `picocom` by command `C-a C-q` if you are going to reload your Sketch to the board.
 
 Network Connection
 ------------------
 - The SoftwareSerial is used for communication with network.
-- Serial speed is configured to `57600 bit/s`.
+- Serial speed is configured to `9600 bit/s`.
 - Please connect the network device to pins 10(RX) and 11(TX) and do not forget about ground pin.
 - RAW MQTT packets are sent/received to/from serial.
 
@@ -142,12 +139,18 @@ Don't forget to update `SENSOR_ID` value.
 
 #### Logger
 
-Change `LOG_ENABLED` to `0` in `Logger.h` to disable or to `1` for enabling.
+Logging is disabled by default. Define `LOG_ENABLED` equal `1` to enable.
+
+If you can't add the define using compiler options (in case of Arduino IDE) just
+define it before including the library header:
+```c++
+#define LOG_ENABLED 1
+#include "Logger.h"
+```
 
 #### Publishing delay
 
 Delay between data publishing to the server.
-Default publishing period is `15` seconds.
 Update `MQTT_PUBLISH_PERIOD_MS` to desired value. Value must be in milliseconds.
 
 Application loop behavior
@@ -155,4 +158,4 @@ Application loop behavior
 - Establish connection with MQTT Broker If not connected yet.
 - Get configuration If available.
 - Collect and send telemetry data.
-- Sleep until time for next iteration.
+- Sleep until time for next action.
