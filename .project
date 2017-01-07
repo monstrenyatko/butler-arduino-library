@@ -34,12 +34,17 @@
 		<link>
 			<name>core/core</name>
 			<type>2</type>
-			<location>/Applications/Eclipse.app/Contents/Eclipse/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/cores/arduino</location>
+			<location>/Applications/Eclipse.app/Contents/Eclipse/arduinoPlugin/packages/arduino/hardware/avr/1.6.14/cores/arduino</location>
 		</link>
 		<link>
 			<name>core/variant</name>
 			<type>2</type>
-			<location>/Applications/Eclipse.app/Contents/Eclipse/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/variants/standard</location>
+			<location>/Applications/Eclipse.app/Contents/Eclipse/arduinoPlugin/packages/arduino/hardware/avr/1.6.14/variants/eightanaloginputs</location>
+		</link>
+		<link>
+			<name>libraries/Adafruit_Unified_Sensor</name>
+			<type>2</type>
+			<location>/Users/monstrenyatko/Documents/Arduino/libraries/Adafruit_Unified_Sensor</location>
 		</link>
 		<link>
 			<name>libraries/ArduinoJson</name>
@@ -47,14 +52,14 @@
 			<location>/Users/monstrenyatko/Documents/Arduino/libraries/ArduinoJson</location>
 		</link>
 		<link>
+			<name>libraries/ArduinoMqtt</name>
+			<type>2</type>
+			<location>/Users/monstrenyatko/Documents/Arduino/libraries/ArduinoMqtt</location>
+		</link>
+		<link>
 			<name>libraries/DHT_sensor_library</name>
 			<type>2</type>
 			<location>/Users/monstrenyatko/Documents/Arduino/libraries/DHT_sensor_library</location>
-		</link>
-		<link>
-			<name>libraries/MQTTClient</name>
-			<type>2</type>
-			<location>/Users/monstrenyatko/Documents/Arduino/libraries/MQTTClient</location>
 		</link>
 		<link>
 			<name>libraries/MemoryFree</name>
@@ -64,7 +69,7 @@
 		<link>
 			<name>libraries/SoftwareSerial</name>
 			<type>2</type>
-			<location>/Applications/Eclipse.app/Contents/Eclipse/arduinoPlugin/packages/arduino/hardware/avr/1.6.11/libraries/SoftwareSerial</location>
+			<location>/Applications/Eclipse.app/Contents/Eclipse/arduinoPlugin/packages/arduino/hardware/avr/1.6.14/libraries/SoftwareSerial</location>
 		</link>
 	</linkedResources>
 </projectDescription>
