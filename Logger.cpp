@@ -4,7 +4,7 @@
  * Purpose: Logging implementation
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014.
+ * Copyright Oleg Kovalenko 2014, 2017.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
@@ -31,7 +31,6 @@ void Logger::println(const char* v) {
 }
 
 void Logger::printfln_P(const char *fmt, ...) {
-
 	char buf[LOG_SIZE_MAX];
 	va_list ap;
 	va_start(ap, fmt);
