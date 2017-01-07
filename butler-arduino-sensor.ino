@@ -4,7 +4,7 @@
  * Purpose: Arduino "Main" functions
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014,2015.
+ * Copyright Oleg Kovalenko 2014, 2015, 2017.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
@@ -14,8 +14,7 @@
 /* External Includes */
 #include <MemoryFree.h>
 #include <Arduino.h>
-#include <Countdown.h>
-#include <MQTTClient.h>
+#include <MqttClient.h>
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
@@ -31,7 +30,7 @@
 
 
 ////////// CONFIGURATION //////////
-#define SENSOR_ID									"4A16-AEB6"
+#define SENSOR_ID									"TEST_SENSOR_ID"
 #define DHTTYPE										DHT11
 #define PIN_DHT										2
 #define PIN_SW_UART_RX								10
@@ -43,76 +42,76 @@
 #define MQTT_MAX_PACKET_SIZE						128
 #define MQTT_MAX_PAYLOAD_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
-#define MQTT_COMMAND_TIMEOUT_MS						8000				// 8 sec
-#define MQTT_KEEP_ALIVE_INTERVAL_SEC				5*60				// 5 min
+#define MQTT_COMMAND_TIMEOUT_MS						(8*1000L)
+#define MQTT_KEEP_ALIVE_INTERVAL_SEC				(MQTT_PUBLISH_PERIOD_MS/1000L*3)
 #define MQTT_CLIENT_ID								SENSOR_ID
-#define MQTT_SUBSCRIBE_QOS							MQTT::QOS1
-#define MQTT_SUBSCRIBE_TOPIC_CFG					"butler/sensor/"SENSOR_ID"/config"
-#define MQTT_PUBLISH_QOS							MQTT::QOS0
-#define MQTT_PUBLISH_TOPIC							"butler/sensor/"SENSOR_ID"/data"
-#define MQTT_LISTEN_TIME_MS							1000				// 1 sec
-#define MQTT_PUBLISH_PERIOD_MS						3*60*1000L			// 3 min
-#define MQTT_PUBLISH_PERIOD_MAX_MS					((MQTT_KEEP_ALIVE_INTERVAL_SEC - 5) * 1000L)
+#define MQTT_SUBSCRIBE_QOS							MqttClient::QOS1
+#define MQTT_SUBSCRIBE_TOPIC_CFG					"test/sensor/" SENSOR_ID "/config"
+#define MQTT_PUBLISH_QOS							MqttClient::QOS0
+#define MQTT_PUBLISH_TOPIC							"test/sensor/" SENSOR_ID "/data"
+#define MQTT_LISTEN_TIME_MS							(5*1000L)
+#define MQTT_PUBLISH_PERIOD_MS						(1*60*1000L)
 #define MQTT_CONNECT_RETRIES_QTY					5
-#define MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS			5000				// 5 sec
-#define MQTT_DISCONNECTED_IDLE_PERIOD_MS			((MQTT_KEEP_ALIVE_INTERVAL_SEC + 5) * 1000L)
-#define NETWORK_UART_IDLE_PERIOD_LONG_MS			16
-#define NETWORK_UART_IDLE_PERIOD_SHORT_MS			2
-#define NETWORK_HIBERNATE_DELAY_MS					2000
-#define NETWORK_WAKE_UP_DELAY_MS					10000
+#define MQTT_DISCONNECTED_IDLE_PERIOD_MS			(2*60*1000L)
+#define NETWORK_HIBERNATE_DELAY_MS					100L
+#define NETWORK_WAKE_UP_DELAY_MS					100L
 #define LPM_MODE									LPM_MODE_IDLE
-#define HW_UART_SPEED								57600
-#define SW_UART_SPEED								57600
-
+#define HW_UART_SPEED								57600L
+#define SW_UART_SPEED								9600L
 
 ////////// OBJECTS //////////
-Network* network = NULL;
-MQTT::Client<Network, Countdown, MQTT_MAX_PACKET_SIZE, MQTT_MAX_MESSAGE_HANDLERS>* mqtt =
-		NULL;
-DHT* dht = NULL;
-Sensor* sensorTemperature = NULL;
-Sensor* sensorHumidity = NULL;
-unsigned long publishPeriodMs = MQTT_PUBLISH_PERIOD_MS;
+class Time: public MqttClient::Time {
+public:
+	unsigned long millis() const {
+		return ::millis();
+	}
+} time;
 
-SwUartConfig swUartConfig = {SW_UART_SPEED, PIN_SW_UART_RX, PIN_SW_UART_TX};
-SwUart* swUart = NULL;
-
-HwUartConfig hwUartConfig = {HW_UART_SPEED};
-HwUart* hwUart = NULL;
+Network *network									= NULL;
+MqttClient *mqtt									= NULL;
+Sensor* sensorTemperature							= NULL;
+Sensor* sensorHumidity								= NULL;
+unsigned long publishPeriodMs						= MQTT_PUBLISH_PERIOD_MS;
+unsigned long publishTs								= 0;
+int connectCounter									= 0;
+bool firstPublish									= false;
 
 //// DECLARATION ////
 void(* reset) (void) = 0;//declare reset function at address 0
 void check();
 void connect();
-void processMessageCfg(MQTT::MessageData& md);
-void networkHibernate(uint32_t);
-void networkWakeUp(uint32_t);
+void buildMessagePayload(char* buffer, int size);
+void processMessageConfig(MqttClient::MessageData& md);
+void networkHibernate(unsigned long);
+void networkWakeUp(unsigned long);
 
 ////////// IMPLEMENTATION //////////
-/**
- * Called once at startup
- */
+unsigned long timeElapsed(unsigned long startTs) {
+	return time.millis() - startTs;
+}
+
+bool isTimePassed(unsigned long startTs, unsigned long duration) {
+	return timeElapsed(startTs) >= duration;
+}
+
+unsigned long timeLeft(unsigned long startTs, unsigned long duration) {
+	return isTimePassed(startTs, duration) ? 0 : duration - timeElapsed(startTs);
+}
+
+/** Called once at startup */
 void setup() {
 	////// INIT //////
 
-#if LOG_ENABLED
 	/// HW UART ///
-	{
-		hwUart = new HwUart(hwUartConfig);
-	}
-#endif
+	Uart *hwUart = new HwUart({HW_UART_SPEED});
 
 	/// SF UART ///
-	{
-		swUart = new SwUart(swUartConfig);
-	}
+	Uart *swUart = new SwUart({SW_UART_SPEED, PIN_SW_UART_RX, PIN_SW_UART_TX});
 
-#if LOG_ENABLED
 	//// LOG ////
 	{
 		Logger::init(*hwUart);
 	}
-#endif
 
 	//// LPM ////
 	{
@@ -126,20 +125,27 @@ void setup() {
 	{
 		UartNetworkConfig config;
 		config.uart = swUart;
-		config.readIdlePeriodLongMs = NETWORK_UART_IDLE_PERIOD_LONG_MS;
-		config.readIdlePeriodShortMs = NETWORK_UART_IDLE_PERIOD_SHORT_MS;
 		network = new UartNetwork(config);
 	}
 
 	//// MQTT ////
 	{
-		mqtt = new MQTT::Client<Network, Countdown, MQTT_MAX_PACKET_SIZE,
-		MQTT_MAX_MESSAGE_HANDLERS>(*network, MQTT_COMMAND_TIMEOUT_MS);
+		MqttClient::Logger *mqttLogger = new MqttClient::LoggerImpl<Uart>(*hwUart);
+		MqttClient::Network * mqttNetwork = new MqttClient::NetworkImpl<Network>(*network, time);
+		MqttClient::Buffer *mqttSendBuffer = new MqttClient::ArrayBuffer<MQTT_MAX_PACKET_SIZE>();
+		MqttClient::Buffer *mqttRecvBuffer = new MqttClient::ArrayBuffer<MQTT_MAX_PACKET_SIZE>();
+		MqttClient::MessageHandlers *mqttMessageHandlers = new MqttClient::MessageHandlersImpl<MQTT_MAX_MESSAGE_HANDLERS>();
+		MqttClient::Options options;
+		options.commandTimeoutMs = MQTT_COMMAND_TIMEOUT_MS;
+		mqtt = new MqttClient (
+			options, *mqttLogger, time, *mqttNetwork, *mqttSendBuffer,
+			*mqttRecvBuffer, *mqttMessageHandlers
+		);
 	}
 
 	//// SENSOR ////
 	{
-		dht = new DHT(PIN_DHT, DHTTYPE);
+		DHT* dht = new DHT(PIN_DHT, DHTTYPE);
 		dht->begin();
 		sensorTemperature = new SensorTemperature(*dht);
 		sensorHumidity = new SensorHumidity(*dht);
@@ -161,94 +167,109 @@ void setup() {
  */
 void loop() {
 	check();
-	{
-		int connectCounter = 0;
-		while (!mqtt->isConnected()) {
-			connect();
-			if (!mqtt->isConnected()) {
-				connectCounter++;
-				if (connectCounter < MQTT_CONNECT_RETRIES_QTY ) {
-					LOG_PRINTFLN("Reconnect in %u ms", MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS);
-					Lpm::idle(MQTT_CONNECT_RETRIES_IDLE_PERIOD_MS);
-				} else {
-					LOG_PRINTFLN("ERROR, Max retries qty has been reached => reset in %lu ms",
-							MQTT_DISCONNECTED_IDLE_PERIOD_MS);
-					networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
-					Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS - NETWORK_HIBERNATE_DELAY_MS);
-					reset();
-				}
+	if (!mqtt->isConnected()) {
+		// Not connected
+		// Clean buffers and give some time for network
+		mqtt->yield();
+		// Connect
+		connect();
+		if (!mqtt->isConnected()) {
+			if (++connectCounter > MQTT_CONNECT_RETRIES_QTY ) {
+				LOG_PRINTFLN("ERROR, Max retries qty has been reached => reset");
+				reset();
+				// Execution must stop at this point
+			}
+			networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
+			LOG_PRINTFLN("Reconnect in %lu ms", MQTT_DISCONNECTED_IDLE_PERIOD_MS);
+			Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS);
+			networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
+		} else {
+			// Do the publish immediately after reconnect
+			firstPublish = true;
+			// Listen for configuration
+			LOG_PRINTFLN("Waiting the configuration for %lu ms", MQTT_LISTEN_TIME_MS);
+			mqtt->yield(MQTT_LISTEN_TIME_MS);
+		}
+	} else {
+		// Connected
+		// Check if time to Publish
+		if (firstPublish || isTimePassed(publishTs, publishPeriodMs)) {
+			const int bufferSize = MQTT_MAX_PAYLOAD_SIZE;
+			char buffer[bufferSize];
+			memset(buffer, 0, bufferSize);
+			// Build message payload
+			buildMessagePayload(buffer, bufferSize);
+			// Build message
+			MqttClient::Message message;
+			message.qos = MQTT_PUBLISH_QOS;
+			message.retained = false;
+			message.dup = false;
+			message.payload = (void*) buffer;
+			message.payloadLen = strlen(buffer) + 1;
+			// Publish
+			MqttClient::Error::type rc = mqtt->publish(MQTT_PUBLISH_TOPIC, message);
+			if (rc != MqttClient::Error::SUCCESS) {
+				LOG_PRINTFLN("ERROR, Publish, rc:%i", rc);
+			} else {
+				publishTs = time.millis();
+				firstPublish = false;
+			}
+		}
+		// Idle until next event
+		LOG_PRINTFLN("Idle for %lu ms", min(timeLeft(publishTs, publishPeriodMs), mqtt->getIdleInterval()));
+		networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
+		Lpm::idle(min(timeLeft(publishTs, publishPeriodMs), mqtt->getIdleInterval()));
+		networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
+		// Determine the next event
+		if (timeLeft(publishTs, publishPeriodMs) > mqtt->getIdleInterval()) {
+			// Need to call yield
+			while(mqtt->isConnected() && mqtt->getIdleInterval() < MQTT_COMMAND_TIMEOUT_MS) {
+				mqtt->yield();
 			}
 		}
 	}
+}
+
+void buildMessagePayload(char* buffer, int size) {
+	const int NUMBER_OF_ROOT_PARAMETERS = 3;
+	const int NUMBER_OF_SENSORS = 2;
+	const int NUMBER_OF_SENSORS_PARAMETERS = 1;
+	// See JSON_OBJECT_SIZE and JSON_ARRAY_SIZE to predict buffer size
+	// Let's make double the prediction
+	const int BUFFER_SIZE = 2 * (JSON_OBJECT_SIZE(NUMBER_OF_ROOT_PARAMETERS)
+			+ JSON_ARRAY_SIZE(NUMBER_OF_SENSORS)
+			+ NUMBER_OF_SENSORS*JSON_OBJECT_SIZE(NUMBER_OF_SENSORS_PARAMETERS));
+	StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+	JsonArray& data = jsonBuffer.createArray();
+	JsonObject& temp = jsonBuffer.createObject();
 	{
-		const uint8_t bufSize = MQTT_MAX_PAYLOAD_SIZE;
-		char buf[bufSize];
-		memset(buf, 0, bufSize);
-		// build message payload
-		{
-			const int NUMBER_OF_SENSORS = 2;
-			// See JSON_OBJECT_SIZE and JSON_ARRAY_SIZE to predict buffer size
-			// lets make double the prediction
-			const int BUFFER_SIZE = 2 * (JSON_OBJECT_SIZE(3)
-					+ JSON_ARRAY_SIZE(NUMBER_OF_SENSORS)
-					+ NUMBER_OF_SENSORS*JSON_OBJECT_SIZE(1));
-			StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
-			JsonArray& data = jsonBuffer.createArray();
-			JsonObject& temp = jsonBuffer.createObject();
-			{
-				SensorValue v = sensorTemperature->getData();
-				if (sensorTemperature->verify(v)) {
-					temp["temp"] = v;
-					data.add(temp);
-				}
-			}
-			JsonObject& humid = jsonBuffer.createObject();
-			{
-				SensorValue v = sensorHumidity->getData();
-				if (sensorHumidity->verify(v)) {
-					humid["humid"] = v;
-					data.add(humid);
-				}
-			}
-			JsonObject& root = jsonBuffer.createObject();
-			root["v"] = 1;
-			root["id"] = SENSOR_ID;
-			root["data"] = data;
-			// write to buffer
-			size_t size = root.printTo(buf, bufSize);
-			if (size+1 >= bufSize) {
-				LOG_PRINTFLN("WARN, Big payload: %d", size);
-			}
-		}
-		// build message
-		MQTT::Message message;
-		message.qos = MQTT_PUBLISH_QOS;
-		message.retained = false;
-		message.dup = false;
-		message.payload = (void*) buf;
-		message.payloadlen = strlen(buf) + 1;
-		int rc = mqtt->publish(MQTT_PUBLISH_TOPIC, message);
-		if (rc != 0) {
-			LOG_PRINTFLN("ERROR, MQTT publish, rc:%d", rc);
+		SensorValue v = sensorTemperature->getData();
+		if (sensorTemperature->verify(v)) {
+			temp["temp"] = v;
+			data.add(temp);
 		}
 	}
-	LOG_PRINTFLN("Idle for %lu ms", publishPeriodMs);
-	mqtt->yield(MQTT_LISTEN_TIME_MS);
-	networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
-	Lpm::idle(publishPeriodMs
-			- MQTT_LISTEN_TIME_MS
-			- NETWORK_HIBERNATE_DELAY_MS
-			- NETWORK_WAKE_UP_DELAY_MS
-	);
-	networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
+	JsonObject& humid = jsonBuffer.createObject();
+	{
+		SensorValue v = sensorHumidity->getData();
+		if (sensorHumidity->verify(v)) {
+			humid["humid"] = v;
+			data.add(humid);
+		}
+	}
+	JsonObject& root = jsonBuffer.createObject();
+	root["v"] = 1;
+	root["id"] = SENSOR_ID;
+	root["data"] = data;
+	// Write to buffer
+	root.printTo(buffer, size);
 }
 
 void check() {
-	unsigned long time = millis();
 	LOG_PRINTFLN("#################################");
 	LOG_PRINTFLN("###      Periodic check       ###");
 	LOG_PRINTFLN("### Memory Free :    %.5u B  ###", freeMemory());
-	LOG_PRINTFLN("### Time        : %.8lu Ms ###", time);
+	LOG_PRINTFLN("### Time        : %.8lu Ms ###", time.millis());
 	LOG_PRINTFLN("### Period      : %.8lu Ms ###", publishPeriodMs);
 	LOG_PRINTFLN("#################################");
 }
@@ -256,75 +277,69 @@ void check() {
 void connect() {
 	int rc = network->connect(MQTT_HOST, MQTT_PORT);
 	if (rc != 0) {
-		LOG_PRINTFLN("ERROR, TCP connect, rc:%d", rc);
-		return;
-	}
-	LOG_PRINTFLN("MQTT connect");
-	MQTTPacket_connectData options = MQTTPacket_connectData_initializer;
-	options.MQTTVersion = 3;
-	options.clientID.cstring = (char*)MQTT_CLIENT_ID;
-	options.cleansession = true;
-	options.keepAliveInterval = MQTT_KEEP_ALIVE_INTERVAL_SEC;
-	rc = mqtt->connect(options);
-	if (rc != 0) {
-		LOG_PRINTFLN("ERROR, MQTT connect, rc:%d", rc);
-		return;
-	}
-	LOG_PRINTFLN("MQTT subscribe to %s", MQTT_SUBSCRIBE_TOPIC_CFG);
-	rc = mqtt->subscribe(MQTT_SUBSCRIBE_TOPIC_CFG, MQTT_SUBSCRIBE_QOS, processMessageCfg);
-	if (rc != 0) {
-		LOG_PRINTFLN("ERROR, MQTT subscribe, rc:%d", rc);
-		LOG_PRINTFLN("MQTT drop connection");
-		mqtt->disconnect();
-	}
-}
-
-void printMessage(const char* topic, const char* payload, MQTT::Message msg) {
-	LOG_PRINTFLN(
-			"Message arrived: qos %d, retained %d, dup %d, packetid %d, topic:[%s], payload:[%s]",
-			msg.qos, msg.retained, msg.dup, msg.id, topic, payload);
-}
-
-void processMessageCfg(MQTT::MessageData& md) {
-	const MQTT::Message& msg = md.message;
-	const char* tokenSep = ",";
-	const char blockSep = ':';
-	// TODO: change format to JSON
-	// format is "name1:value,name2:value,nameN:value"
-	char payload[msg.payloadlen + 1];
-	memcpy(payload, msg.payload, msg.payloadlen);
-	payload[msg.payloadlen] = '\0';
-	printMessage(MQTT_SUBSCRIBE_TOPIC_CFG, payload, msg);
-	char* token = strtok(payload, tokenSep);
-	while (token != 0) {
-		String name;
-		String value;
+		LOG_PRINTFLN("ERROR, TCP connect, rc:%i", rc);
+	} else {
+		LOG_PRINTFLN("Connect");
+		MqttClient::Error::type rc = MqttClient::Error::SUCCESS;
+		MqttClient::ConnectResult connectResult;
 		{
-			String block(token);
-			int sep = block.indexOf(blockSep);
-			name = block.substring(0, sep);
-			value = block.substring(sep + 1);
+			MQTTPacket_connectData options = MQTTPacket_connectData_initializer;
+			options.MQTTVersion = 4;
+			options.clientID.cstring = (char*)MQTT_CLIENT_ID;
+			options.cleansession = true;
+			options.keepAliveInterval = MQTT_KEEP_ALIVE_INTERVAL_SEC;
+			rc = mqtt->connect(options, connectResult);
 		}
-		if (name.equals("period")) {
-			char buf[value.length() + 1];
-			value.toCharArray(buf, value.length() + 1);
-			unsigned long tmp = value.toInt();
-			if (tmp > 0) {
-				publishPeriodMs = (tmp > MQTT_PUBLISH_PERIOD_MAX_MS) ?
-				MQTT_PUBLISH_PERIOD_MAX_MS : tmp;
+		if (rc != MqttClient::Error::SUCCESS) {
+			LOG_PRINTFLN("ERROR, Connect, rc:%i", rc);
+		} else {
+			const char* topic = MQTT_SUBSCRIBE_TOPIC_CFG;
+			LOG_PRINTFLN("Subscribe to %s", topic);
+			rc = mqtt->subscribe(topic, MQTT_SUBSCRIBE_QOS, processMessageConfig);
+			if (rc != MqttClient::Error::SUCCESS) {
+				LOG_PRINTFLN("ERROR, Subscribe, rc:%i", rc);
+				LOG_PRINTFLN("Drop connection");
+				mqtt->disconnect();
+			} else {
+				// Success
+				return;
 			}
 		}
-		// Find the next token
-		token = strtok(0, tokenSep);
 	}
+	// Failure => disconnect
+	network->disconnect();
 }
 
-void networkHibernate(uint32_t delay) {
+void processMessageConfig(MqttClient::MessageData& md) {
+	const MqttClient::Message& msg = md.message;
+	char payload[msg.payloadLen + 1];
+	memcpy(payload, msg.payload, msg.payloadLen);
+	payload[msg.payloadLen] = '\0';
+	LOG_PRINTFLN(
+		"Configuration arrived: retained %u, payload:[%s]",
+		msg.retained, payload
+	);
+	const int NUMBER_OF_ROOT_PARAMETERS = 1;
+	// See JSON_OBJECT_SIZE to predict buffer size
+	// Let's make double the prediction
+	const int BUFFER_SIZE = 2 * (JSON_OBJECT_SIZE(NUMBER_OF_ROOT_PARAMETERS));
+	StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+	JsonObject& root = jsonBuffer.parseObject((char*)payload);
+	// Check if parsing succeeds
+	if (!root.success()) {
+		LOG_PRINTFLN("ERROR, Can't pars configuration");
+		return;
+	}
+	publishPeriodMs = root["period"];
+}
+
+void networkHibernate(unsigned long delay) {
 	Lpm::idle(delay);
 	digitalWrite(PIN_LPM_NETWORK, HIGH);
 }
 
-void networkWakeUp(uint32_t delay) {
+void networkWakeUp(unsigned long delay) {
 	digitalWrite(PIN_LPM_NETWORK, LOW);
 	Lpm::idle(delay);
 }
+
