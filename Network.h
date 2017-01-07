@@ -4,7 +4,7 @@
  * Purpose: Common interface for Networking implementation
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014.
+ * Copyright Oleg Kovalenko 2014,2017.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
@@ -23,9 +23,8 @@ class Network {
 public:
 	virtual ~Network() {}
 	virtual int connect(const char* hostname, int port) = 0;
-	virtual int connect(uint32_t hostname, int port) = 0;
-	virtual int read(unsigned char* buffer, int len, int timeoutMs) = 0;
-	virtual int write(unsigned char* buffer, int len, int timeoutMs) = 0;
+	virtual int read(unsigned char* buffer, int len, unsigned long timeoutMs) = 0;
+	virtual int write(unsigned char* buffer, int len, unsigned long timeoutMs) = 0;
 	virtual int disconnect() = 0;
 };
 
