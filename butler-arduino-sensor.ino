@@ -43,14 +43,15 @@
 #define MQTT_MAX_PAYLOAD_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
 #define MQTT_COMMAND_TIMEOUT_MS						(8*1000L)
-#define MQTT_KEEP_ALIVE_INTERVAL_SEC				(MQTT_PUBLISH_PERIOD_MS/1000L*3)
+#define MQTT_KEEP_ALIVE_INTERVAL_SEC				(publishPeriodMs/1000L*3)
 #define MQTT_CLIENT_ID								SENSOR_ID
-#define MQTT_SUBSCRIBE_QOS							MqttClient::QOS1
+#define MQTT_SUBSCRIBE_QOS							MqttClient::QOS0
 #define MQTT_SUBSCRIBE_TOPIC_CFG					"test/sensor/" SENSOR_ID "/config"
 #define MQTT_PUBLISH_QOS							MqttClient::QOS0
 #define MQTT_PUBLISH_TOPIC							"test/sensor/" SENSOR_ID "/data"
 #define MQTT_LISTEN_TIME_MS							(5*1000L)
 #define MQTT_PUBLISH_PERIOD_MS						(1*60*1000L)
+#define MQTT_UPDATE_CONFIG_PERIOD_MS				(publishPeriodMs*3L)
 #define MQTT_CONNECT_RETRIES_QTY					5
 #define MQTT_DISCONNECTED_IDLE_PERIOD_MS			(2*60*1000L)
 #define NETWORK_HIBERNATE_DELAY_MS					100L
@@ -71,8 +72,9 @@ Network *network									= NULL;
 MqttClient *mqtt									= NULL;
 Sensor* sensorTemperature							= NULL;
 Sensor* sensorHumidity								= NULL;
-unsigned long publishPeriodMs						= MQTT_PUBLISH_PERIOD_MS;
+unsigned long publishPeriodMs						= 0;
 unsigned long publishTs								= 0;
+unsigned long updateConfigTs						= 0;
 int connectCounter									= 0;
 bool firstPublish									= false;
 
@@ -80,6 +82,7 @@ bool firstPublish									= false;
 void(* reset) (void) = 0;//declare reset function at address 0
 void check();
 void connect();
+bool updateConfig();
 void buildMessagePayload(char* buffer, int size);
 void processMessageConfig(MqttClient::MessageData& md);
 void networkHibernate(unsigned long);
@@ -101,6 +104,12 @@ unsigned long timeLeft(unsigned long startTs, unsigned long duration) {
 /** Called once at startup */
 void setup() {
 	////// INIT //////
+	// TODO: Get publishPeriodMs from EEPROM
+	publishPeriodMs = MQTT_PUBLISH_PERIOD_MS;
+	publishTs = 0;
+	updateConfigTs = 0;
+	connectCounter = 0;
+	firstPublish = false;
 
 	/// HW UART ///
 	Uart *hwUart = new HwUart({HW_UART_SPEED});
@@ -184,11 +193,9 @@ void loop() {
 			Lpm::idle(MQTT_DISCONNECTED_IDLE_PERIOD_MS);
 			networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
 		} else {
+			connectCounter = 0;
 			// Do the publish immediately after reconnect
 			firstPublish = true;
-			// Listen for configuration
-			LOG_PRINTFLN("Waiting the configuration for %lu ms", MQTT_LISTEN_TIME_MS);
-			mqtt->yield(MQTT_LISTEN_TIME_MS);
 		}
 	} else {
 		// Connected
@@ -215,13 +222,27 @@ void loop() {
 				firstPublish = false;
 			}
 		}
+		// Check if time to Update configuration
+		if (isTimePassed(updateConfigTs, MQTT_UPDATE_CONFIG_PERIOD_MS)) {
+			if (updateConfig()) {
+				updateConfigTs = time.millis();
+			}
+		}
 		// Idle until next event
-		LOG_PRINTFLN("Idle for %lu ms", min(timeLeft(publishTs, publishPeriodMs), mqtt->getIdleInterval()));
+		unsigned long nextEventDelay = min(
+			timeLeft(publishTs, publishPeriodMs),
+			timeLeft(updateConfigTs, MQTT_UPDATE_CONFIG_PERIOD_MS)
+		);
+		LOG_PRINTFLN("Idle for %lu ms", min(nextEventDelay, mqtt->getIdleInterval()));
 		networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
-		Lpm::idle(min(timeLeft(publishTs, publishPeriodMs), mqtt->getIdleInterval()));
+		Lpm::idle(min(nextEventDelay, mqtt->getIdleInterval()));
 		networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
-		// Determine the next event
-		if (timeLeft(publishTs, publishPeriodMs) > mqtt->getIdleInterval()) {
+		// Determine the next event after wake up
+		nextEventDelay = min(
+			timeLeft(publishTs, publishPeriodMs),
+			timeLeft(updateConfigTs, MQTT_UPDATE_CONFIG_PERIOD_MS)
+		);
+		if (nextEventDelay > mqtt->getIdleInterval()) {
 			// Need to call yield
 			while(mqtt->isConnected() && mqtt->getIdleInterval() < MQTT_COMMAND_TIMEOUT_MS) {
 				mqtt->yield();
@@ -293,21 +314,43 @@ void connect() {
 		if (rc != MqttClient::Error::SUCCESS) {
 			LOG_PRINTFLN("ERROR, Connect, rc:%i", rc);
 		} else {
-			const char* topic = MQTT_SUBSCRIBE_TOPIC_CFG;
-			LOG_PRINTFLN("Subscribe to %s", topic);
-			rc = mqtt->subscribe(topic, MQTT_SUBSCRIBE_QOS, processMessageConfig);
-			if (rc != MqttClient::Error::SUCCESS) {
-				LOG_PRINTFLN("ERROR, Subscribe, rc:%i", rc);
-				LOG_PRINTFLN("Drop connection");
-				mqtt->disconnect();
-			} else {
+			if (updateConfig()) {
 				// Success
+				updateConfigTs = time.millis();
 				return;
 			}
 		}
 	}
 	// Failure => disconnect
 	network->disconnect();
+}
+
+bool updateConfig() {
+	bool res = false;
+	if (mqtt->isConnected()) {
+		const char* topic = MQTT_SUBSCRIBE_TOPIC_CFG;
+		LOG_PRINTFLN("Subscribe to %s", topic);
+		MqttClient::Error::type rc = mqtt->subscribe(topic, MQTT_SUBSCRIBE_QOS, processMessageConfig);
+		if (rc != MqttClient::Error::SUCCESS) {
+			LOG_PRINTFLN("ERROR, Subscribe, rc:%i", rc);
+		} else {
+			// Listen for configuration
+			LOG_PRINTFLN("Waiting the configuration for %lu ms", MQTT_LISTEN_TIME_MS);
+			mqtt->yield(MQTT_LISTEN_TIME_MS);
+			rc = mqtt->unsubscribe(topic);
+			if (rc != MqttClient::Error::SUCCESS) {
+				LOG_PRINTFLN("ERROR, Unsubscribe, rc:%i", rc);
+			} else {
+				// Success
+				res = true;
+			}
+		}
+	}
+	if (!res) {
+		LOG_PRINTFLN("Drop connection");
+		mqtt->disconnect();
+	}
+	return res;
 }
 
 void processMessageConfig(MqttClient::MessageData& md) {
@@ -321,16 +364,18 @@ void processMessageConfig(MqttClient::MessageData& md) {
 	);
 	const int NUMBER_OF_ROOT_PARAMETERS = 1;
 	// See JSON_OBJECT_SIZE to predict buffer size
-	// Let's make double the prediction
-	const int BUFFER_SIZE = 2 * (JSON_OBJECT_SIZE(NUMBER_OF_ROOT_PARAMETERS));
+	// Let's make 3x of the prediction
+	const int BUFFER_SIZE = 3 * (JSON_OBJECT_SIZE(NUMBER_OF_ROOT_PARAMETERS));
 	StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
-	JsonObject& root = jsonBuffer.parseObject((char*)payload);
+	JsonObject& root = jsonBuffer.parseObject(&payload[0]);
 	// Check if parsing succeeds
 	if (!root.success()) {
 		LOG_PRINTFLN("ERROR, Can't pars configuration");
 		return;
 	}
 	publishPeriodMs = root["period"];
+	// TODO: Store publishPeriodMs to EEPROM
+	// TODO: Reconnect if publishPeriodMs is changed to update keep-alive timer
 }
 
 void networkHibernate(unsigned long delay) {
