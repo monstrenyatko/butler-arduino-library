@@ -11,9 +11,10 @@
  *******************************************************************************
  */
 
+/* System Includes */
+#include <Arduino.h>
 /* External Includes */
 #include <MemoryFree.h>
-#include <Arduino.h>
 #include <MqttClient.h>
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
@@ -387,4 +388,3 @@ void networkWakeUp(unsigned long delay) {
 	digitalWrite(PIN_LPM_NETWORK, LOW);
 	Lpm::idle(delay);
 }
-
