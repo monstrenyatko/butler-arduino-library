@@ -56,6 +56,12 @@ Eclipse (OPTIONAL)
 1. Install Eclipse IDE for C/C++ Developers (With CDT plugin).
 2. Install `CDT Cross GCC Built-in Compiler Settings` package using
 Eclipse `Install New Software`.
+3. In case of problems with `C` files indexing like some types are not resolved
+but the definition is definitely available in the included header Need to update
+the `Language Mappings` in `Eclipse Preferences` -> `C/C++` -> `Language Mappings`.
+Add next mappings:
+	- `C Header file` to `C++`
+	- `C Source file` to `C++`
 
 PlatformIO Core (OPTIONAL)
 --------------------------
