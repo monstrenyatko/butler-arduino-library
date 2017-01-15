@@ -44,7 +44,7 @@
 #define MQTT_MAX_PAYLOAD_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
 #define MQTT_COMMAND_TIMEOUT_MS						(8*1000L)
-#define MQTT_KEEP_ALIVE_INTERVAL_SEC				(publishPeriodMs/1000L*3)
+#define MQTT_KEEP_ALIVE_INTERVAL_SEC				(publishPeriodMs/1000L*2)
 #define MQTT_CLIENT_ID								SENSOR_ID
 #define MQTT_SUBSCRIBE_QOS							MqttClient::QOS0
 #define MQTT_SUBSCRIBE_TOPIC_CFG					"test/sensor/" SENSOR_ID "/config"
@@ -78,6 +78,7 @@ unsigned long publishTs								= 0;
 unsigned long updateConfigTs						= 0;
 int connectCounter									= 0;
 bool firstPublish									= false;
+bool firstUpdateConfig								= false;
 
 //// DECLARATION ////
 void(* reset) (void) = 0;//declare reset function at address 0
@@ -111,6 +112,7 @@ void setup() {
 	updateConfigTs = 0;
 	connectCounter = 0;
 	firstPublish = false;
+	firstUpdateConfig = false;
 
 	/// HW UART ///
 	Uart *hwUart = new HwUart({HW_UART_SPEED});
@@ -178,7 +180,7 @@ void setup() {
 void loop() {
 	check();
 	if (!mqtt->isConnected()) {
-		// Not connected
+		// Connecting
 		// Clean buffers and give some time for network
 		mqtt->yield();
 		// Connect
@@ -195,46 +197,49 @@ void loop() {
 			networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
 		} else {
 			connectCounter = 0;
+			// Update configuration immediately after reconnect
+			firstUpdateConfig = true;
 			// Do the publish immediately after reconnect
 			firstPublish = true;
 		}
+	} else if (firstUpdateConfig || isTimePassed(updateConfigTs, MQTT_UPDATE_CONFIG_PERIOD_MS)) {
+		// Time to Update configuration
+		// Clean buffers and give some time for network
+		mqtt->yield();
+		if (updateConfig()) {
+			updateConfigTs = time.millis();
+			firstUpdateConfig = false;
+		}
+	} else if (firstPublish || isTimePassed(publishTs, publishPeriodMs)) {
+		// Time to Publish
+		const int bufferSize = MQTT_MAX_PAYLOAD_SIZE;
+		char buffer[bufferSize];
+		memset(buffer, 0, bufferSize);
+		// Build message payload
+		buildMessagePayload(buffer, bufferSize);
+		// Build message
+		MqttClient::Message message;
+		message.qos = MQTT_PUBLISH_QOS;
+		message.retained = false;
+		message.dup = false;
+		message.payload = (void*) buffer;
+		message.payloadLen = strlen(buffer) + 1;
+		// Publish
+		MqttClient::Error::type rc = mqtt->publish(MQTT_PUBLISH_TOPIC, message);
+		if (rc != MqttClient::Error::SUCCESS) {
+			LOG_PRINTFLN("ERROR, Publish, rc:%i", rc);
+		} else {
+			publishTs = time.millis();
+			firstPublish = false;
+		}
 	} else {
-		// Connected
-		// Check if time to Publish
-		if (firstPublish || isTimePassed(publishTs, publishPeriodMs)) {
-			const int bufferSize = MQTT_MAX_PAYLOAD_SIZE;
-			char buffer[bufferSize];
-			memset(buffer, 0, bufferSize);
-			// Build message payload
-			buildMessagePayload(buffer, bufferSize);
-			// Build message
-			MqttClient::Message message;
-			message.qos = MQTT_PUBLISH_QOS;
-			message.retained = false;
-			message.dup = false;
-			message.payload = (void*) buffer;
-			message.payloadLen = strlen(buffer) + 1;
-			// Publish
-			MqttClient::Error::type rc = mqtt->publish(MQTT_PUBLISH_TOPIC, message);
-			if (rc != MqttClient::Error::SUCCESS) {
-				LOG_PRINTFLN("ERROR, Publish, rc:%i", rc);
-			} else {
-				publishTs = time.millis();
-				firstPublish = false;
-			}
-		}
-		// Check if time to Update configuration
-		if (isTimePassed(updateConfigTs, MQTT_UPDATE_CONFIG_PERIOD_MS)) {
-			if (updateConfig()) {
-				updateConfigTs = time.millis();
-			}
-		}
 		// Idle until next event
 		unsigned long nextEventDelay = min(
 			timeLeft(publishTs, publishPeriodMs),
 			timeLeft(updateConfigTs, MQTT_UPDATE_CONFIG_PERIOD_MS)
 		);
 		LOG_PRINTFLN("Idle for %lu ms", min(nextEventDelay, mqtt->getIdleInterval()));
+		// Sleep
 		networkHibernate(NETWORK_HIBERNATE_DELAY_MS);
 		Lpm::idle(min(nextEventDelay, mqtt->getIdleInterval()));
 		networkWakeUp(NETWORK_WAKE_UP_DELAY_MS);
@@ -315,11 +320,8 @@ void connect() {
 		if (rc != MqttClient::Error::SUCCESS) {
 			LOG_PRINTFLN("ERROR, Connect, rc:%i", rc);
 		} else {
-			if (updateConfig()) {
-				// Success
-				updateConfigTs = time.millis();
-				return;
-			}
+			// Success
+			return;
 		}
 	}
 	// Failure => disconnect
@@ -338,23 +340,27 @@ bool updateConfig() {
 			// Listen for configuration
 			LOG_PRINTFLN("Waiting the configuration for %lu ms", MQTT_LISTEN_TIME_MS);
 			mqtt->yield(MQTT_LISTEN_TIME_MS);
-			rc = mqtt->unsubscribe(topic);
-			if (rc != MqttClient::Error::SUCCESS) {
-				LOG_PRINTFLN("ERROR, Unsubscribe, rc:%i", rc);
-			} else {
-				// Success
-				res = true;
+			// Configuration change might cause the disconnect
+			if (mqtt->isConnected()) {
+				rc = mqtt->unsubscribe(topic);
+				if (rc != MqttClient::Error::SUCCESS) {
+					LOG_PRINTFLN("ERROR, Unsubscribe, rc:%i", rc);
+				} else {
+					// Success
+					res = true;
+				}
 			}
 		}
-	}
-	if (!res) {
-		LOG_PRINTFLN("Drop connection");
-		mqtt->disconnect();
+		if (!res && mqtt->isConnected()) {
+			LOG_PRINTFLN("Drop connection");
+			mqtt->disconnect();
+		}
 	}
 	return res;
 }
 
 void processMessageConfig(MqttClient::MessageData& md) {
+	bool changed = false;
 	const MqttClient::Message& msg = md.message;
 	char payload[msg.payloadLen + 1];
 	memcpy(payload, msg.payload, msg.payloadLen);
@@ -374,9 +380,17 @@ void processMessageConfig(MqttClient::MessageData& md) {
 		LOG_PRINTFLN("ERROR, Can't pars configuration");
 		return;
 	}
-	publishPeriodMs = root["period"];
+	// Reconnect if publishPeriodMs is changed to update keep-alive timer
+	{
+		unsigned long old = publishPeriodMs;
+		publishPeriodMs = root["period"];
+		changed = (old != publishPeriodMs);
+	}
 	// TODO: Store publishPeriodMs to EEPROM
-	// TODO: Reconnect if publishPeriodMs is changed to update keep-alive timer
+	if (changed) {
+		LOG_PRINTFLN("Configuration changed => reconnect");
+		mqtt->disconnect();
+	}
 }
 
 void networkHibernate(unsigned long delay) {
