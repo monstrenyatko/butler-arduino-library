@@ -1,23 +1,25 @@
 /*
  *******************************************************************************
  *
- * Purpose: Common interface for Networking implementation
+ * Purpose: Network interface declaration.
  *
  *******************************************************************************
- * Copyright Oleg Kovalenko 2014,2017.
+ * Copyright Oleg Kovalenko 2014, 2017.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
  *******************************************************************************
  */
 
-#ifndef NETWORK_H_
-#define NETWORK_H_
+#ifndef BUTLER_ARDUINO_NETWORK_H_
+#define BUTLER_ARDUINO_NETWORK_H_
 
-/* Internal Includes */
-/* External Includes */
 /* System Includes */
-#include <stdint.h>
+/* Internal Includes */
+
+
+namespace Butler {
+namespace Arduino {
 
 class Network {
 public:
@@ -28,4 +30,7 @@ public:
 	virtual int disconnect() = 0;
 };
 
-#endif // NETWORK_H_
+}}
+
+#endif // BUTLER_ARDUINO_NETWORK_H_
+

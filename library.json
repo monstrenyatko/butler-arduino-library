@@ -1,0 +1,25 @@
+{
+	"name": "butler-arduino-library",
+	"version": "1.0.0",
+	"keywords": "mqtt, m2m, iot, xbee, dht",
+	"description": "Library to simplify telemetry sensors and IoT controllers development.",
+	"authors": {
+		"name": "Oleg Kovalenko",
+		"email": "monstrenyatko@gmail.com",
+		"url": "https://github.com/monstrenyatko",
+		"maintainer": true
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/monstrenyatko/butler-arduino-library.git"
+	},
+	"export": {
+		"exclude": [
+			"extras"
+		]
+	},
+	"frameworks": "arduino",
+	"platforms": "*",
+	"examples": "examples/*/*.ino"
+}
+

@@ -1,7 +1,7 @@
 # PlatformIO
 .pioenvs
 .piolibdeps
-/lib
+lib
 
 # Atom IDE
 .clang_complete
@@ -10,5 +10,5 @@
 # Eclipse IDE
 .project
 .cproject
-/.settings/
+.settings
 

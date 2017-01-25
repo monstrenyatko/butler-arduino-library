@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- * Purpose: UART adaptor interface
+ * Purpose: UART interface declaration.
  *
  *******************************************************************************
  * Copyright Oleg Kovalenko 2015, 2017.
@@ -11,16 +11,20 @@
  *******************************************************************************
  */
 
-#ifndef UART_H_
-#define UART_H_
+#ifndef BUTLER_ARDUINO_UART_H_
+#define BUTLER_ARDUINO_UART_H_
 
-/* Internal Includes */
-/* External Includes */
 /* System Includes */
 #include <stddef.h>
 #include <stdint.h>
+/* Internal Includes */
+#include "ButlerArduinoPrint.hpp"
 
-class Uart {
+
+namespace Butler {
+namespace Arduino {
+
+class Uart: public Print {
 public:
 	virtual ~Uart() {}
 	virtual void setTimeout(unsigned long timeout) = 0;
@@ -32,4 +36,7 @@ public:
 	virtual int available(void) = 0;
 };
 
-#endif /* UART_H_ */
+}}
+
+#endif // BUTLER_ARDUINO_UART_H_
+

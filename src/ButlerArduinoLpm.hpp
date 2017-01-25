@@ -1,33 +1,33 @@
 /*
  *******************************************************************************
  *
- * Purpose: Humidity Sensor implementation
+ * Purpose: Low Power Mode interface declaration.
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014.
+ * Copyright Oleg Kovalenko 2017.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
  *******************************************************************************
  */
 
-#include "SensorHumidity.h"
+#ifndef BUTLER_ARDUINO_LPM_H_
+#define BUTLER_ARDUINO_LPM_H_
+
+/* System Includes */
 /* Internal Includes */
-/* External Includes */
-#include <DHT.h>
 
 
-SensorHumidity::SensorHumidity(DHT& sensor)
-: mSensor(sensor)
-{}
+namespace Butler {
+namespace Arduino {
 
-SensorHumidity::~SensorHumidity() {
-}
+class Lpm {
+public:
+	virtual ~Lpm() {}
+	virtual void idle(unsigned long ms) = 0;
+};
 
-SensorValue SensorHumidity::getData() {
-	return mSensor.readHumidity();
-}
+}}
 
-bool SensorHumidity::verify(SensorValue v) {
-	return !isnan(v);
-}
+#endif // BUTLER_ARDUINO_LPM_H_
+

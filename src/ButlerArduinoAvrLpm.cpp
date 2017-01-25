@@ -1,26 +1,26 @@
 /*
  *******************************************************************************
  *
- * Purpose: Low Power Mode implementation
+ * Purpose: Low Power Mode implementation for AVR.
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014.
+ * Copyright Oleg Kovalenko 2014, 2017.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
  *******************************************************************************
  */
 
-/* Internal Includes */
-#include "LPM.h"
-#include "Logger.h"
-/* External Includes */
-#include <Arduino.h>
+#ifdef __AVR__
+
 /* System Includes */
+#include <Arduino.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include <avr/power.h>
 #include <avr/interrupt.h>
+/* Internal Includes */
+#include "ButlerArduinoAvrLpm.hpp"
 
 
 #define LPM_CLOCK_PRESCALER_1024	(_BV (CS20) | _BV(CS21) | _BV (CS22))
@@ -56,38 +56,27 @@
 #define LPM_CLOCK_BIG_TICKS_PER_1_MS	(0.001/(1./(F_CPU)*LPM_CLOCK_BIG_PRESCALER))
 #define LPM_CLOCK_SMALL_TICKS_PER_1_MS	(0.001/(1./(F_CPU)*LPM_CLOCK_SMALL_PRESCALER))
 
-volatile unsigned long lpmClockInterruptsQty = 0;
-uint8_t clock_0_TIMSK = 0;
-LpmConfig Lpm::mConfig;
+volatile unsigned long									lpmClockInterruptsQty = 0;
+extern volatile unsigned long							timer0_millis;
 
 ISR (TIMER2_COMPA_vect)
 {
 	++lpmClockInterruptsQty;
 }
 
-void Lpm::init(const LpmConfig& config) {
-	mConfig = config;
+namespace Butler {
+namespace Arduino {
+
+AvrLpm::AvrLpm(const AvrLpmConfig& config)
+: mConfig(config)
+{
 	pinMode(mConfig.pinLedAwake, OUTPUT);
 	digitalWrite(mConfig.pinLedAwake, HIGH);
 	resetClock();
 	clock_0_TIMSK = TIMSK0;
 }
 
-void stopSysClock() {
-	// save state
-	clock_0_TIMSK = TIMSK0;
-	// disable interrupts
-	TIMSK0 = 0;
-	// clean flags
-	TIFR0 = 0;
-}
-
-void restoreSysClock() {
-	// restore
-	TIMSK0 = clock_0_TIMSK;
-}
-
-void Lpm::idle(uint32_t ms) {
+void AvrLpm::idle(unsigned long ms) {
 	digitalWrite(mConfig.pinLedAwake, LOW);
 	unsigned long start = millis();
 	while (ms > 0) {
@@ -149,7 +138,7 @@ void Lpm::idle(uint32_t ms) {
 	digitalWrite(mConfig.pinLedAwake, HIGH);
 }
 
-void Lpm::startClockBig() {
+void AvrLpm::startClockBig() {
 	stopClock();
 	// set
 	lpmClockInterruptsQty = 0;
@@ -163,19 +152,18 @@ void Lpm::startClockBig() {
 	TIMSK2 = _BV(OCIE2A);
 }
 
-void Lpm::updateSysClockBig() {
+void AvrLpm::updateSysClockBig() {
 	// 1 of .. == BIG_INTERRUPT_MS_QTY ms
 	unsigned long tmp = lpmClockInterruptsQty*LPM_CLOCK_BIG_INTERRUPT_MS_QTY;
 	// get ticks qty per 1ms
 	double remainder = TCNT2/LPM_CLOCK_BIG_TICKS_PER_1_MS;
 	tmp += round(remainder); //add the remainder with rounding
-	extern volatile unsigned long timer0_millis;
 	noInterrupts();
 	timer0_millis += tmp;
 	interrupts();
 }
 
-void Lpm::startClockSmall() {
+void AvrLpm::startClockSmall() {
 	stopClock();
 	// set
 	lpmClockInterruptsQty = 0;
@@ -189,24 +177,23 @@ void Lpm::startClockSmall() {
 	TIMSK2 = _BV(OCIE2A);
 }
 
-void Lpm::updateSysClockSmall() {
+void AvrLpm::updateSysClockSmall() {
 	// 1 of .. == SMALL_INTERRUPT_MS_QTY ms
 	unsigned long tmp = lpmClockInterruptsQty*LPM_CLOCK_SMALL_INTERRUPT_MS_QTY;
 	// get ticks qty per 1ms
 	double remainder = TCNT2/LPM_CLOCK_SMALL_TICKS_PER_1_MS;
 	tmp += round(remainder); //add the remainder with rounding
-	extern volatile unsigned long timer0_millis;
 	noInterrupts();
 	timer0_millis += tmp;
 	interrupts();
 }
 
-void Lpm::stopClock() {
+void AvrLpm::stopClock() {
 	TCCR2B=0; // No clock source (Timer/Counter stopped).
 	TIMSK2=0; // disable interrupts
 }
 
-void Lpm::resetClock() {
+void AvrLpm::resetClock() {
 	// disable interrupts
 	TIMSK2 = 0;
 	// set clock source to asynchronous
@@ -222,3 +209,22 @@ void Lpm::resetClock() {
 	// clean flags
 	TIFR2 = 0;
 }
+
+void AvrLpm::stopSysClock() {
+	// save state
+	clock_0_TIMSK = TIMSK0;
+	// disable interrupts
+	TIMSK0 = 0;
+	// clean flags
+	TIFR0 = 0;
+}
+
+void AvrLpm::restoreSysClock() {
+	// restore
+	TIMSK0 = clock_0_TIMSK;
+}
+
+}}
+
+#endif // __AVR__
+

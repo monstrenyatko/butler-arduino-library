@@ -1,34 +1,36 @@
 /*
  *******************************************************************************
  *
- * Purpose: Humidity Sensor implementation
+ * Purpose: Persistent storage implementation.
  *
  *******************************************************************************
- * Copyright Monstrenyatko 2014.
+ * Copyright Oleg Kovalenko 2017.
  *
  * Distributed under the MIT License.
  * (See accompanying file LICENSE or copy at http://opensource.org/licenses/MIT)
  *******************************************************************************
  */
 
-#ifndef SENSOR_HUMIDITY_H_
-#define SENSOR_HUMIDITY_H_
+#ifndef BUTLER_ARDUINO_STORAGE_H_
+#define BUTLER_ARDUINO_STORAGE_H_
 
-#include "Sensor.h"
-/* Internal Includes */
-/* External Includes */
 /* System Includes */
+#include <stdint.h>
+#include <EEPROM.h>
+/* Internal Includes */
 
-class DHT;
 
-class SensorHumidity: public Sensor {
+namespace Butler {
+namespace Arduino {
+
+class Storage {
 public:
-	SensorHumidity(DHT&);
-	~SensorHumidity();
-	SensorValue getData();
-	bool verify(SensorValue v);
-private:
-	DHT&	mSensor;
+	static uint16_t size() {
+		return EEPROM.length();
+	}
 };
 
-#endif /* SENSOR_HUMIDITY_H_ */
+}}
+
+#endif // BUTLER_ARDUINO_STORAGE_H_
+
