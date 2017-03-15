@@ -26,9 +26,11 @@ namespace Arduino {
 
 class DhtSensor {
 public:
-	DhtSensor(DHT& sensor): mSensor(sensor) {mSensor.begin();}
+	DhtSensor(DHT& sensor): mSensor(sensor) {}
 
 	~DhtSensor() {}
+
+	void start() { mSensor.begin(); }
 
 	SensorValue getTemperature() { return mSensor.readTemperature(); }
 	SensorValue getHumidity() { return mSensor.readHumidity(); }

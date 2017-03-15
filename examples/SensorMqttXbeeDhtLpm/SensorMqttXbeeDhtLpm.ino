@@ -36,6 +36,7 @@
 #define DOMAIN										"test"
 #define DHTTYPE										DHT11
 #define PIN_DHT										2
+#define PIN_DHT_ON									4
 #define PIN_SW_UART_RX								10
 #define PIN_SW_UART_TX								11
 #define PIN_LPM_NETWORK								9
@@ -91,8 +92,10 @@ void check() {
 
 void buildMessagePayload(char* buffer, int size) {
 	// Get sensor values
+	digitalWrite(PIN_DHT_ON, HIGH);
 	Butler::Arduino::SensorValue vTemp = sensor.getTemperature();
 	Butler::Arduino::SensorValue vHumid = sensor.getHumidity();
+	digitalWrite(PIN_DHT_ON, LOW);
 	// Predict buffer size
 	const int NUMBER_OF_ROOT_PARAMETERS = 3;
 	const int NUMBER_OF_SENSORS = 2;
@@ -225,6 +228,11 @@ void setup() {
 	//// NETWORK ////
 	pinMode(PIN_LPM_NETWORK, OUTPUT);
 	gCtx.net = new Butler::Arduino::UartNetwork(*swUart);
+
+	//// SENSORS ////
+	pinMode(PIN_DHT_ON, OUTPUT);
+	digitalWrite(PIN_DHT_ON, LOW);
+	sensor.start();
 
 	//// LOOP CTX ////
 	// TODO: Get publishPeriodMs from EEPROM
