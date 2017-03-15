@@ -59,7 +59,7 @@
 #define MQTT_DISCONNECTED_IDLE_PERIOD_MS			(2*60*1000L)
 #define NETWORK_HIBERNATE_DELAY_MS					10
 #define NETWORK_WAKE_UP_DELAY_MS					10
-#define LPM_MODE									Butler::Arduino::LPM_MODE_IDLE
+#define LPM_MODE									Butler::Arduino::LPM_MODE_PWR_DOWN
 #define HW_UART_SPEED								57600L
 #define SW_UART_SPEED								9600L
 

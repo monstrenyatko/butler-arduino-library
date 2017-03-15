@@ -25,7 +25,8 @@ namespace Arduino {
 
 enum AvrLpmMode {
 	LPM_MODE_IDLE,
-	LPM_MODE_PWR_SAVE
+	LPM_MODE_PWR_SAVE,
+	LPM_MODE_PWR_DOWN
 };
 
 struct AvrLpmConfig {
@@ -41,14 +42,16 @@ private:
 	AvrLpmConfig										mConfig;
 	uint8_t												clock_0_TIMSK = 0;
 
-	void resetClock();
-	void stopClock();
-	void startClockBig();
-	void updateSysClockBig();
-	void startClockSmall();
-	void updateSysClockSmall();
+	void resetLpmClock();
+	void stopLpmClock();
+	void startLpmClock(unsigned int ticksMax, unsigned int prescaler);
+	void updateSysClock(unsigned long millis);
+	void updateSysClock(unsigned long lpmClockInterruptsQty, int lpmClockMsPerInterrupt, unsigned long lpmClockTicksPerMs);
 	void stopSysClock();
 	void restoreSysClock();
+	void startWdt(unsigned int prescaler);
+	unsigned int calcWdtPrescaler(unsigned long ms);
+	unsigned long calcWdtTimeout(unsigned int prescaler);
 };
 
 }}
