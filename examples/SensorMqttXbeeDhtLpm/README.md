@@ -168,7 +168,11 @@ Information about sensor is available on https://learn.adafruit.com/dht
 
 Default configuration:
 - DHT11 sensor type
-- Pin 2 is used to read data from sensor
+- `Pin 2` is used to read data from sensor `data-out` pin
+- `Pin 4` is used to power-on sensor:
+    * sensor `VCC` pin should be connected to this pin
+    * no need to connect sensor `VCC` to the microcontroller `VCC`
+    * `pull-up` resistor must connect this pin with sensor `data-out` pin
 
 Please follow the wiring instruction from https://learn.adafruit.com/dht/connecting-to-a-dhtxx-sensor
 
