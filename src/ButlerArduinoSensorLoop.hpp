@@ -119,13 +119,8 @@ bool updateConfig(Context& gCtx, LoopContext& lCtx, const LoopConstants& lConst)
 			lCtx.mqtt->yield(lConst.configListenPeriodMs);
 			// Configuration change might cause the disconnect
 			if (lCtx.mqtt->isConnected()) {
-				rc = lCtx.mqtt->unsubscribe(lConst.configTopic);
-				if (rc != MqttClient::Error::SUCCESS) {
-					LOG_PRINTFLN(gCtx, "ERROR, Unsubscribe, rc:%i", rc);
-				} else {
-					// Success
-					res = true;
-				}
+				// Success
+				res = true;
 			}
 		}
 		if (!res && lCtx.mqtt->isConnected()) {
@@ -169,8 +164,6 @@ inline void loop(Context& gCtx, LoopContext& lCtx, const LoopConstants& lConst) 
 		lCtx.firstConfigUpdate
 		|| Time::isTimePassed(gCtx.time->millis(), lCtx.configUpdateTs, lConst.configUpdatePeriodMs)
 	) {
-		// Process control messages
-		lCtx.mqtt->yield();
 		// Time to Update configuration
 		if (LoopPrivate::updateConfig(gCtx, lCtx, lConst)) {
 			lCtx.configUpdateTs = gCtx.time->millis();

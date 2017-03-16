@@ -46,13 +46,13 @@
 #define MQTT_MAX_PACKET_SIZE						128
 #define MQTT_MAX_PAYLOAD_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
-#define MQTT_COMMAND_TIMEOUT_MS						(8*1000L)
+#define MQTT_COMMAND_TIMEOUT_MS						(3*1000L)
 #define MQTT_KEEP_ALIVE_INTERVAL_SEC				(lCtx.publishPeriodMs/1000L*2)
 #define MQTT_SUBSCRIBE_QOS							MqttClient::QOS0
 #define MQTT_SUBSCRIBE_TOPIC_CFG					DOMAIN "/sensor/" ID "/config"
 #define MQTT_PUBLISH_QOS							MqttClient::QOS0
 #define MQTT_PUBLISH_TOPIC							DOMAIN "/sensor/" ID "/data"
-#define MQTT_LISTEN_TIME_MS							(5*1000L)
+#define MQTT_LISTEN_TIME_MS							(3*1000L)
 #define MQTT_PUBLISH_PERIOD_MS						(1*60*1000L)
 #define MQTT_UPDATE_CONFIG_PERIOD_MS				(lCtx.publishPeriodMs*3L)
 #define MQTT_CONNECT_RETRIES_QTY					5
