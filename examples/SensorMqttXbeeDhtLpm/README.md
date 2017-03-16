@@ -134,6 +134,21 @@ Network Connection
 - Support One-to-One, One-to-All, All-to-One communications.
 - Works like wireless serial connection.
 
+###### Configuration
+For [Digi](https://www.digi.com) modules you can use [XCTU](https://www.digi.com/products/xbee-rf-solutions/xctu-software/xctu)
+utility to set XBee properties.
+
+- Connect PIN 10(RX) to XBee PIN 2(DOUT)
+- Connect PIN 11(TX) to XBee PIN 3(DIN)
+- Connect PIN 9(NET_SLEEP) to XBee PIN 9(SLEEP_RQ)
+- Set XBee property `ID`(PAN ID) equal to coordinator value
+- Set XBee property `DH` and `DL` equal to `0` to route all traffic to coordinator
+- Set XBee property `BS`(baud rate) equal to `3` that is serial interface speed `9600`
+- Set XBee property `AP` equal to `0` that is `Transparent mode`
+- Set XBee property `SP` and `SN` equal or less than configured on coordinator and all routers
+- Set XBee property `SM`(sleep mode) equal to `5` that is `Cyclic Sleep Pin-Wake`
+- Set XBee property `ST`(time before sleep) equal or slightly bigger than `MQTT_COMMAND_TIMEOUT_MS` and `MQTT_LISTEN_TIME_MS`
+
 ###### All-to-One
 Allows to connect ANY quantity of sensors with server via one PC serial interface.
 <br/>`butler-xbee-gateway` (https://github.com/monstrenyatko/butler-xbee-gateway) must be used.
