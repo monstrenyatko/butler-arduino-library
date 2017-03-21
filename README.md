@@ -17,9 +17,9 @@ Examples
 Sensors
 -------
 
-#### MQTT-XBEE-DHT-SENSOR
+#### MQTT-XBEE-DHT-SENSOR for AVR
 
-See example [README](examples/SensorMqttXbeeDhtLpm/README.md).
+See example [README](examples/AvrSensorMqttXbeeDhtLpm/README.md).
 
 Controllers
 -----------
