@@ -175,7 +175,8 @@ inline void loop(Context& gCtx, LoopContext& lCtx, const LoopConstants& lConst) 
 	) {
 		// Time to Publish
 		const int bufferSize = lConst.publishPayloadMaxSize;
-		char buffer[bufferSize] = {0};
+		char buffer[bufferSize];
+		memset(buffer, 0, bufferSize);
 		// Build message payload
 		lConst.buildMessagePayload(buffer, bufferSize);
 		// Build message
