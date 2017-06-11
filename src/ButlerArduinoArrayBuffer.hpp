@@ -2,7 +2,6 @@
  *******************************************************************************
  *
  * Purpose: Array buffer implementation.
- *    Usually used to print logs.
  *
  *******************************************************************************
  * Copyright Oleg Kovalenko 2017.
@@ -16,7 +15,6 @@
 #define BUTLER_ARDUINO_ARRAY_BUFFER_H_
 
 /* System Includes */
-#include <stddef.h>
 /* Internal Includes */
 #include "ButlerArduinoBuffer.hpp"
 
@@ -24,12 +22,12 @@
 namespace Butler {
 namespace Arduino {
 
-template<int BUFFER_SIZE = 100>
+template<uint32_t BUFFER_SIZE = 100>
 struct ArrayBuffer: public Buffer {
-		unsigned char* get() {return buf;}
-		int size() const {return BUFFER_SIZE;}
+		uint8_t* get() const {return buf;}
+		uint32_t size() const {return BUFFER_SIZE;}
 	private:
-		unsigned char								buf[BUFFER_SIZE];
+		uint8_t											buf[BUFFER_SIZE];
 };
 
 }}

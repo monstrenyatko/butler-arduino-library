@@ -16,7 +16,7 @@
 #define BUTLER_ARDUINO_BUFFER_H_
 
 /* System Includes */
-#include <stddef.h>
+#include <stdint.h>
 /* Internal Includes */
 
 
@@ -24,10 +24,11 @@ namespace Butler {
 namespace Arduino {
 
 struct Buffer {
+	virtual ~Buffer() {}
 	/** Gets pointer to array */
-	virtual unsigned char* get() = 0;
+	virtual uint8_t* get() const = 0;
 	/** Gets the array size */
-	virtual int size() const = 0;
+	virtual uint32_t size() const = 0;
 };
 
 }}
