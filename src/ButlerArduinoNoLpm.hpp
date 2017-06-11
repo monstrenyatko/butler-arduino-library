@@ -39,7 +39,7 @@ public:
 	}
 
 	void idle(unsigned long ms) {
-		Timer timer(*(mConfig.gCtx->time), ms);
+		Time::Timer timer(*(mConfig.gCtx->time), ms);
 		digitalWrite(mConfig.pinLedAwake, LOW);
 		while(!timer.expired());
 		digitalWrite(mConfig.pinLedAwake, HIGH);
