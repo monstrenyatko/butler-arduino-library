@@ -25,13 +25,11 @@ namespace Arduino {
 
 namespace Time {class Clock;}
 class Print;
-class Network;
 class Lpm;
 
 struct Context {
 	Time::Clock											*time = NULL;
 	Print												*logger = NULL;
-	Network												*net = NULL;
 	Lpm													*lpm = NULL;
 };
 

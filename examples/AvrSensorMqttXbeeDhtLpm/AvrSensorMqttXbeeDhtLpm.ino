@@ -64,7 +64,7 @@
 #define SW_UART_SPEED								9600L
 
 ////////// OBJECTS DECLARATION //////////
-class Time: public MqttClient::Time, public Butler::Arduino::Time::Clock {
+class System: public MqttClient::System, public Butler::Arduino::Time::Clock {
 public:
 	unsigned long millis() const {
 		return ::millis();
@@ -72,10 +72,11 @@ public:
 };
 
 ////////// OBJECTS //////////
-Time												time;
+System												system;
 Butler::Arduino::Context							gCtx;
 Butler::Arduino::LoopContext						lCtx;
 Butler::Arduino::LoopConstants						lConst;
+Butler::Arduino::Network							*network = NULL;
 Butler::Arduino::DhtSensor							sensor(*new DHT(PIN_DHT, DHTTYPE));
 
 ////////// IMPLEMENTATION //////////
@@ -158,11 +159,11 @@ void processMessageConfig(MqttClient::MessageData& md) {
 }
 
 int networkConnect() {
-	return gCtx.net->connect(MQTT_HOST, MQTT_PORT);
+	return network->connect(MQTT_HOST, MQTT_PORT);
 }
 
 void networkDisconnect() {
-	gCtx.net->disconnect();
+	network->disconnect();
 }
 
 void networkHibernate() {
@@ -206,7 +207,7 @@ void setup() {
 	lConst = Butler::Arduino::LoopConstants();
 
 	//// TIME ////
-	gCtx.time = &time;
+	gCtx.time = &system;
 
 	//// HW UART ////
 	Butler::Arduino::Uart *hwUart = new Butler::Arduino::HwUart({HW_UART_SPEED});
@@ -227,7 +228,7 @@ void setup() {
 
 	//// NETWORK ////
 	pinMode(PIN_LPM_NETWORK, OUTPUT);
-	gCtx.net = new Butler::Arduino::UartNetwork(*swUart);
+	network = new Butler::Arduino::UartNetwork(*swUart);
 
 	//// SENSORS ////
 	pinMode(PIN_DHT_ON, OUTPUT);
@@ -241,14 +242,14 @@ void setup() {
 	//// MQTT ////
 	{
 		MqttClient::Logger *mqttLogger = new MqttClient::LoggerImpl<Butler::Arduino::Uart>(*hwUart);
-		MqttClient::Network *mqttNetwork = new MqttClient::NetworkImpl<Butler::Arduino::Network>(*gCtx.net, time);
+		MqttClient::Network *mqttNetwork = new MqttClient::NetworkImpl<Butler::Arduino::Network>(*network, system);
 		MqttClient::Buffer *mqttSendBuffer = new MqttClient::ArrayBuffer<MQTT_MAX_PACKET_SIZE>();
 		MqttClient::Buffer *mqttRecvBuffer = new MqttClient::ArrayBuffer<MQTT_MAX_PACKET_SIZE>();
 		MqttClient::MessageHandlers *mqttMessageHandlers = new MqttClient::MessageHandlersImpl<MQTT_MAX_MESSAGE_HANDLERS>();
 		MqttClient::Options options;
 		options.commandTimeoutMs = MQTT_COMMAND_TIMEOUT_MS;
 		lCtx.mqtt = new MqttClient(
-			options, *mqttLogger, time, *mqttNetwork, *mqttSendBuffer,
+			options, *mqttLogger, system, *mqttNetwork, *mqttSendBuffer,
 			*mqttRecvBuffer, *mqttMessageHandlers
 		);
 	}
