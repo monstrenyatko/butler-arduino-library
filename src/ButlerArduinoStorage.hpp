@@ -16,8 +16,8 @@
 
 /* System Includes */
 #include <stdint.h>
-#include <EEPROM.h>
 /* Internal Includes */
+#include "ButlerArduinoBuffer.hpp"
 
 
 namespace Butler {
@@ -25,9 +25,12 @@ namespace Arduino {
 
 class Storage {
 public:
-	static uint16_t size() {
-		return EEPROM.length();
-	}
+	virtual ~Storage() {}
+	virtual uint32_t size() = 0;
+	virtual uint32_t readSize() = 0;
+	virtual bool read(Buffer&) = 0;
+	virtual void write(const Buffer&) = 0;
+	virtual void reset() = 0;
 };
 
 }}
