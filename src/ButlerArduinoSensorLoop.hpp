@@ -19,6 +19,7 @@
 /* Internal Includes */
 #include "ButlerArduinoContext.hpp"
 #include "ButlerArduinoTime.hpp"
+#include "ButlerArduinoUtil.hpp"
 
 
 #define BUTLER_ARDUINO_LOOP_CALL(func, ...) if(func) func(##__VA_ARGS__)
@@ -141,8 +142,6 @@ inline void setup(Context& gCtx, LoopContext& lCtx, const LoopConstants& lConst)
 
 inline void loop(Context& gCtx, LoopContext& lCtx, const LoopConstants& lConst) {
 	if (!lCtx.mqtt->isConnected()) {
-		// Clean buffers
-		lCtx.mqtt->yield();
 		// Connecting
 		LoopPrivate::connect(gCtx, lCtx, lConst);
 		if (!lCtx.mqtt->isConnected()) {
