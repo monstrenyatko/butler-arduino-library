@@ -28,7 +28,7 @@ namespace Arduino {
 
 namespace CaptivePortal {
 
-typedef std::function<void(Config::WiFi&)> WiFiConfig_f;
+typedef std::function<void(Config::WiFiConfig&)> WiFiConfig_f;
 
 class WiFiConfig {
 public:
@@ -42,7 +42,7 @@ public:
 		delete webServer;
 	}
 
-	void start(const char* softApSsid,WiFiConfig_f handler) {
+	void start(const char *softApSsid, WiFiConfig_f handler) {
 		//// NETWORK ////
 		WiFi.persistent(false);
 		WiFi.mode(WIFI_AP_STA);
@@ -64,7 +64,7 @@ public:
 			webServer->send(200, "text/html", FPSTR(Butler::Arduino::Html::WIFI_CONFIG_PAGE));
 		});
 		webServer->on("/wifiConfig", HTTP_POST, [=]{
-			Config::WiFi v;
+			Config::WiFiConfig v;
 			v.ssid = webServer->arg(Butler::Arduino::Strings::SSID);
 			v.passphrase = webServer->arg(Butler::Arduino::Strings::PASSPHRASE);
 			webServer->send(204);
@@ -88,7 +88,7 @@ private:
 	DNSServer										*dnsServer;
 };
 
-}
+} // CaptivePortal
 
 }}
 

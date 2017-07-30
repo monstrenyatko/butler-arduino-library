@@ -24,15 +24,20 @@ namespace Arduino {
 
 namespace Config {
 
-struct WiFi {
+struct WiFiConfig {
 	String											ssid;
 	String											passphrase;
+
+	void set(const WiFiConfig &o) {
+		ssid = o.ssid;
+		passphrase = o.passphrase;
+	}
 
 	bool isValid() const {
 		return ssid.length();
 	}
 
-	bool isEqual(const WiFi &o) const {
+	bool isEqual(const WiFiConfig &o) const {
 		return ssid.equals(o.ssid)
 			&& passphrase.equals(o.passphrase);
 	}
