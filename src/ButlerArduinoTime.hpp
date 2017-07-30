@@ -41,6 +41,12 @@ class Clock {
 
 		/** Returns the current time in milliseconds. */
 		virtual unsigned long millis() const = 0;
+
+		/** Returns the UTC time in seconds since Jan 01, 1970, 00:00. */
+		virtual unsigned long rtc() const = 0;
+
+		/** Initialize the current time by NTP server. */
+		virtual void initRtc(const char* ntpServer) = 0;
 };
 
 class Timer {
