@@ -27,6 +27,18 @@ namespace Arduino {
 	}
 #endif
 
+namespace Util {
+
+String macAddressToHex(String mac) {
+	int idx;
+	while((idx = mac.indexOf(':')) >= 0) {
+		mac.remove(idx, 1);
+	}
+	return mac;
+}
+
+} // Util
+
 }}
 
 #endif // BUTLER_ARDUINO_UTIL_H_
