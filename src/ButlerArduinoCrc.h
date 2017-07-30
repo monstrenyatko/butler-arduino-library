@@ -45,22 +45,33 @@ uint32_t crc32_update(uint32_t crc, uint8_t data) {
 
 namespace Crc {
 
-uint32_t crc32(const char *s) {
+uint32_t crc32Begin() {
 	uint32_t crc = ~0L;
-	while (*s) {
-		crc = CrcPrivate::crc32_update(crc, *s++);
+	return crc;
+}
+
+uint32_t crc32Continue(uint32_t crc, const uint8_t b[], uint32_t len) {
+	for (uint32_t i = 0; i < len; i++) {
+		crc = CrcPrivate::crc32_update(crc, b[i]);
 	}
+	return crc;
+}
+
+uint32_t crc32End(uint32_t crc) {
 	crc = ~crc;
 	return crc;
 }
 
-uint32_t crc32(const uint8_t b[], uint32_t len) {
-	uint32_t crc = ~0L;
-	for (uint32_t i = 0; i < len; i++) {
-		crc = CrcPrivate::crc32_update(crc, b[i]);
+uint32_t crc32(const char *s) {
+	uint32_t crc = crc32Begin();
+	while (*s) {
+		crc = CrcPrivate::crc32_update(crc, *s++);
 	}
-	crc = ~crc;
-	return crc;
+	return crc32End(crc);
+}
+
+uint32_t crc32(const uint8_t b[], uint32_t len) {
+	return crc32End(crc32Continue(crc32Begin(), b, len));
 }
 
 } // Crc
