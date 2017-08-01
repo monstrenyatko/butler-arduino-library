@@ -105,7 +105,7 @@ private:
 				uint32_t sleepTimeMs = header.ctx.msCounter;
 				if (sleepTimeMs > ONE_HOUR_MS) {
 					sleepTimeMs = ONE_HOUR_MS;
-					rfMode = WAKE_RF_DISABLED;
+					rfMode = RF_DISABLED;
 				} else {
 					header.ctx.state = DONE;
 				}
