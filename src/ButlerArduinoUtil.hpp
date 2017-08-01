@@ -15,7 +15,9 @@
 #define BUTLER_ARDUINO_UTIL_H_
 
 /* System Includes */
+#include <WString.h>
 /* Internal Includes */
+#include "ButlerArduinoStrings.hpp"
 
 
 namespace Butler {
@@ -35,6 +37,23 @@ String macAddressToHex(String mac) {
 		mac.remove(idx, 1);
 	}
 	return mac;
+}
+
+void setModelKey(String &model, const String &key, const String &value) {
+	model.replace(key, value);
+}
+
+String makeUrl(String model, const String &addr, const uint32_t port) {
+	setModelKey(model, Strings::MODEL_KEY_ADDR, addr);
+	setModelKey(model, Strings::MODEL_KEY_PORT, String(port));
+	return model;
+}
+
+String makeTopic(String model, const String &nameSpace, const String &group, const String &id) {
+	setModelKey(model, Strings::MODEL_KEY_NAMESPACE, nameSpace);
+	setModelKey(model, Strings::MODEL_KEY_GROUP, group);
+	setModelKey(model, Strings::MODEL_KEY_ID, id);
+	return model;
 }
 
 } // Util
