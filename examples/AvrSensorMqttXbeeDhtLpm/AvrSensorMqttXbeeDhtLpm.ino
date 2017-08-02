@@ -64,7 +64,7 @@
 #define SW_UART_SPEED								9600L
 
 ////////// OBJECTS DECLARATION //////////
-class System: public MqttClient::System, public Butler::Arduino::Time::Clock {
+class SystemImpl: public MqttClient::System, public Butler::Arduino::Time::Clock {
 public:
 	unsigned long millis() const {
 		return ::millis();
@@ -72,7 +72,6 @@ public:
 };
 
 ////////// OBJECTS //////////
-System												system;
 Butler::Arduino::Context							gCtx;
 Butler::Arduino::LoopContext						lCtx;
 Butler::Arduino::LoopConstants						lConst;
@@ -206,8 +205,11 @@ void setup() {
 	lCtx = Butler::Arduino::LoopContext();
 	lConst = Butler::Arduino::LoopConstants();
 
+	//// SYSTEM ////
+	SystemImpl *system = new SystemImpl;
+
 	//// TIME ////
-	gCtx.time = &system;
+	gCtx.time = system;
 
 	//// HW UART ////
 	Butler::Arduino::Uart *hwUart = new Butler::Arduino::HwUart({HW_UART_SPEED});
@@ -242,14 +244,14 @@ void setup() {
 	//// MQTT ////
 	{
 		MqttClient::Logger *mqttLogger = new MqttClient::LoggerImpl<Butler::Arduino::Uart>(*hwUart);
-		MqttClient::Network *mqttNetwork = new MqttClient::NetworkImpl<Butler::Arduino::Network>(*network, system);
+		MqttClient::Network *mqttNetwork = new MqttClient::NetworkImpl<Butler::Arduino::Network>(*network, *system);
 		MqttClient::Buffer *mqttSendBuffer = new MqttClient::ArrayBuffer<MQTT_MAX_PACKET_SIZE>();
 		MqttClient::Buffer *mqttRecvBuffer = new MqttClient::ArrayBuffer<MQTT_MAX_PACKET_SIZE>();
 		MqttClient::MessageHandlers *mqttMessageHandlers = new MqttClient::MessageHandlersImpl<MQTT_MAX_MESSAGE_HANDLERS>();
 		MqttClient::Options options;
 		options.commandTimeoutMs = MQTT_COMMAND_TIMEOUT_MS;
 		lCtx.mqtt = new MqttClient(
-			options, *mqttLogger, system, *mqttNetwork, *mqttSendBuffer,
+			options, *mqttLogger, *system, *mqttNetwork, *mqttSendBuffer,
 			*mqttRecvBuffer, *mqttMessageHandlers
 		);
 	}
