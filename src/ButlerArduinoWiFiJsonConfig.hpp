@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- * Purpose: WiFi Json configuration structure.
+ * Purpose: WiFi JSON configuration structure.
  *
  *******************************************************************************
  * Copyright Oleg Kovalenko 2017.
@@ -32,22 +32,16 @@ struct WiFiJsonConfig: public JsonConfigNode, public WiFiConfig {
 		bool updated = false;
 		// SSID
 		{
-			String v(json.containsKey(Strings::SSID)
-				? json[Strings::SSID]
-				: String(Strings::EMPTY)
-			);
-			if (!v.equals(ssid)) {
+			const char *v = json[Strings::SSID];
+			if (v && !ssid.equals(v)) {
 				ssid = v;
 				updated = true;
 			}
 		}
 		// PASSPHRASE
 		{
-			String v(json.containsKey(Strings::PASSPHRASE)
-				? json[Strings::PASSPHRASE]
-				: String(Strings::EMPTY)
-			);
-			if (!v.equals(passphrase)) {
+			const char *v = json[Strings::PASSPHRASE];
+			if (v && !passphrase.equals(v)) {
 				passphrase = v;
 				updated = true;
 			}
