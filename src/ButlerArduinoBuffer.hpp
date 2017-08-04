@@ -23,12 +23,18 @@
 namespace Butler {
 namespace Arduino {
 
-struct Buffer {
-	virtual ~Buffer() {}
+template<typename TYPE_T>
+struct BufferBase {
+	virtual ~BufferBase() {}
 	/** Gets pointer to array */
-	virtual uint8_t* get() const = 0;
+	virtual TYPE_T* get() = 0;
+	virtual const TYPE_T* get() const = 0;
 	/** Gets the array size */
 	virtual uint32_t size() const = 0;
+};
+
+struct Buffer: public BufferBase<uint8_t> {
+	virtual ~Buffer() {}
 };
 
 }}

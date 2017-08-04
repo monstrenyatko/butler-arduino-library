@@ -22,14 +22,24 @@
 namespace Butler {
 namespace Arduino {
 
-template<uint32_t BUFFER_SIZE = 100>
-struct ArrayBuffer: public Buffer {
-		uint8_t* get() const {return buf;}
+template<typename TYPE_T, uint32_t BUFFER_SIZE>
+struct ArrayBufferBase: public BufferBase<TYPE_T> {
+		TYPE_T* get() {return buf;}
+		const TYPE_T* get() const {return buf;}
 		uint32_t size() const {return BUFFER_SIZE;}
 	private:
-		uint8_t											buf[BUFFER_SIZE];
+		TYPE_T											buf[BUFFER_SIZE];
 };
 
+template<uint32_t BUFFER_SIZE = 100>
+struct ArrayBuffer: public ArrayBufferBase<uint8_t, BUFFER_SIZE>, public Buffer {
+	uint8_t* get() { return ArrayBufferBase<uint8_t, BUFFER_SIZE>::get(); }
+	const uint8_t* get() const { return ArrayBufferBase<uint8_t, BUFFER_SIZE>::get(); }
+	uint32_t size() const { return ArrayBufferBase<uint8_t, BUFFER_SIZE>::size(); }
+};
+
+template<uint32_t BUFFER_SIZE = 100>
+struct CharArrayBuffer: public ArrayBufferBase<char, BUFFER_SIZE> {};
 }}
 
 #endif // BUTLER_ARDUINO_ARRAY_BUFFER_H_

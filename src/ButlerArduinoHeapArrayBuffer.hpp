@@ -22,16 +22,31 @@
 namespace Butler {
 namespace Arduino {
 
-struct HeapArrayBuffer: public Buffer {
-		HeapArrayBuffer(): mSize(0), mBuf(NULL) {}
-		HeapArrayBuffer(uint32_t size): mSize(size), mBuf(new uint8_t[mSize]) {}
-		~HeapArrayBuffer() {delete[] mBuf;}
-		uint8_t* get() const {return mBuf;}
+template<typename TYPE_T>
+struct HeapArrayBufferBase: public BufferBase<TYPE_T> {
+		HeapArrayBufferBase(): mSize(0), mBuf(NULL) {}
+		HeapArrayBufferBase(uint32_t size): mSize(size), mBuf(new TYPE_T[mSize]) {}
+		~HeapArrayBufferBase() {delete[] mBuf;}
+		TYPE_T* get() {return mBuf;}
+		const TYPE_T* get() const {return mBuf;}
 		uint32_t size() const {return mSize;}
-		void resize(uint32_t size) {delete[] mBuf; mSize = size; mBuf = new uint8_t[mSize];}
+		void resize(uint32_t size) {delete[] mBuf; mSize = size; mBuf = new TYPE_T[mSize];}
 	private:
 		uint32_t										mSize;
-		uint8_t											*mBuf;
+		TYPE_T											*mBuf;
+};
+
+struct HeapArrayBuffer: public HeapArrayBufferBase<uint8_t>, public Buffer {
+	HeapArrayBuffer() {}
+	HeapArrayBuffer(uint32_t size): HeapArrayBufferBase<uint8_t>(size) {}
+	uint8_t* get() { return HeapArrayBufferBase<uint8_t>::get(); }
+	const uint8_t* get() const { return HeapArrayBufferBase<uint8_t>::get(); }
+	uint32_t size() const { return HeapArrayBufferBase<uint8_t>::size(); }
+};
+
+struct CharHeapArrayBuffer: public HeapArrayBufferBase<char> {
+	CharHeapArrayBuffer() {}
+	CharHeapArrayBuffer(uint32_t size): HeapArrayBufferBase<char>(size) {}
 };
 
 }}
