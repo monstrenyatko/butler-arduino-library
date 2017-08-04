@@ -39,9 +39,11 @@
 #endif
 
 #if LOG_ENABLED
-	#define LOG_PRINTFLN(ctx, fmt, ...)	Butler::Arduino::Logger::logln_P(ctx, BUTLER_PSTR(fmt), ##__VA_ARGS__)
+	#define LOG_PRINTFLN(ctx, fmt, ...)			Butler::Arduino::Logger::logln_P(ctx, BUTLER_PSTR(fmt), ##__VA_ARGS__)
+	#define LOG_PRINTFLN_LONG(ctx, fmt, str)	Butler::Arduino::Logger::logln_P_long(ctx, BUTLER_PSTR(fmt), str)
 #else
-	#define LOG_PRINTFLN(ctx, fmt, ...)	((void)0)
+	#define LOG_PRINTFLN(ctx, fmt, ...)			((void)0)
+	#define LOG_PRINTFLN_LONG(ctx, fmt, str)	((void)0)
 #endif
 
 
@@ -77,12 +79,13 @@ const int LOG_SIZE_MAX									= 128;
 
 inline void logln_P(Context& ctx, const char *fmt, ...) {
 	if (ctx.logger) {
-		char buf[LOG_SIZE_MAX];
+		char buf[LOG_SIZE_MAX + 1];
 		{
 			va_list ap;
 			va_start(ap, fmt);
 			LoggerPrivate::vsnprintf_P(buf, LOG_SIZE_MAX, fmt, ap);
 			va_end(ap);
+			buf[LOG_SIZE_MAX] = '\0';
 			ctx.logger->println(buf);
 		}
 #if LOG_MEM_ENABLED
@@ -94,10 +97,32 @@ inline void logln_P(Context& ctx, const char *fmt, ...) {
 			free(stackptr);														// free up the memory again
 			stackptr =  (uint8_t *)(SP);										// save value of stack pointer
 			LoggerPrivate::snprintf_P(buf, LOG_SIZE_MAX, BUTLER_PSTR("SP:%u HP:%u"), stackptr, heapptr);
+			buf[LOG_SIZE_MAX] = '\0';
 			ctx.logger->println(buf);
 		}
 	#endif // __AVR__
 #endif
+	}
+}
+
+inline void logln_P_long(Context& ctx, const char* fmt, const char* str) {
+	const uint8_t fmtSize = strlen(fmt);
+	if (fmtSize >= LOG_SIZE_MAX) {
+		logln_P(ctx, "Too long format");
+	} else {
+		const uint8_t chunkMaxSize = LOG_SIZE_MAX - fmtSize;
+		char chunkBuffer[chunkMaxSize + 1];
+		const char* cur = str;
+		uint32_t curSize;
+		do {
+			curSize = strlcpy(
+				chunkBuffer,
+				cur,
+				sizeof(chunkBuffer)
+			);
+			logln_P(ctx, fmt, chunkBuffer);
+			cur += chunkMaxSize;
+		} while(curSize > chunkMaxSize);
 	}
 }
 

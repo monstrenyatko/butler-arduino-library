@@ -90,7 +90,7 @@ public:
 			LOG_PRINTFLN(gCtx, "[config] ERROR, Corrupted");
 			return false;
 		}
-		LOG_PRINTFLN(gCtx, "[config] %s", buffer.get());
+		LOG_PRINTFLN_LONG(gCtx, "[config] %s", reinterpret_cast<char*>(buffer.get()));
 		DynamicJsonBuffer jsonBuffer;
 		JsonObject& root = jsonBuffer.parseObject(buffer.get());
 		// Check if parsing succeeds
