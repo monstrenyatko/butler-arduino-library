@@ -30,7 +30,6 @@
 #include "ButlerArduinoEspTime.hpp"
 #include "ButlerArduinoUtil.hpp"
 #include "ButlerArduinoHwUart.hpp"
-#include "ButlerArduinoJsonConfig.hpp"
 #include "ButlerArduinoEspWiFiConfigCaptivePortal.hpp"
 
 
@@ -135,8 +134,8 @@ public:
 	}
 
 	/** Waits the time data using NTP protocol. */
-	bool waitNtpTime(bool sleepOnFailure = true) {
-		getClock().initRtc(getConfig().SERVER_ADDR);
+	bool waitNtpTime(const char* ntpServer = getConfig().SERVER_ADDR, bool sleepOnFailure = true) {
+		getClock().initRtc(ntpServer);
 		bool updated = (0 != getClock().rtc());
 		if (updated) {
 			LOG_PRINTFLN(getContext(), "[manager] NTP time: %lu", getClock().rtc());
@@ -183,6 +182,73 @@ public:
 		);
 		Util::setModelKey(url, Strings::MODEL_KEY_ID, getId());
 		return checkFirmwareUpdate(url);
+	}
+
+	/** Checks and installs the server fingerprints. */
+	void checkServerFingerprintsUpdate() {
+		String payload;
+		{
+			HTTPClient http;
+			if (getConfig().auth.paired) {
+				http.begin(Util::makeUrl(
+						Strings::URL_MODEL_FINGERPRINTS,
+						getConfig().SERVER_ADDR,
+						getConfig().SERVER_HTTPS_PORT
+					),
+					getConfig().auth.fingerprints[0]
+				);
+			} else {
+				LOG_PRINTFLN(getContext(), "[manager] WARN, Fingerprints Update via HTTP");
+				http.begin(Util::makeUrl(
+						Strings::URL_MODEL_FINGERPRINTS_NOT_S,
+						getConfig().SERVER_ADDR,
+						getConfig().SERVER_HTTP_PORT
+				));
+			}
+			int httpCode = http.GET();
+			if (httpCode > 0) {
+				LOG_PRINTFLN(getContext(), "[manager] Fingerprints Update, code: %i", httpCode);
+				if (httpCode == HTTP_CODE_OK) {
+					payload = http.getString();
+				}
+			} else {
+				LOG_PRINTFLN(getContext(), "[manager] Error, Fingerprints Update, error: %s",
+						http.errorToString(httpCode).c_str()
+				);
+			}
+		}
+		bool updated = false;
+		if (payload.length()) {
+			DynamicJsonBuffer jsonBuffer;
+			JsonObject &root = jsonBuffer.parseObject(payload.begin());
+			JsonArray &list = root[Strings::PAYLOAD_KEY_RESULTS];
+			if (JsonArray::invalid() != list) {
+				uint8_t idx = 0;
+				// Set new values
+				for(JsonArray::iterator it = list.begin();
+						idx < getConfig().auth.getMaxFingerprintsQty() && it != list.end();
+						++it)
+				{
+					JsonObject &item = *it;
+					if (JsonObject::invalid() != item) {
+						String value = item[Strings::PAYLOAD_KEY_VALUE];
+						if (value.length()) {
+							LOG_PRINTFLN(getContext(), "[manager] Fingerprint: %s", value.c_str());
+							if (!getConfig().auth.fingerprints[idx].equals(value)) {
+								getConfig().auth.fingerprints[idx] = value;
+								updated = true;
+							}
+							++idx;
+						}
+					}
+				}
+				// Reset empty slots
+				updated = getConfig().auth.resetFingerprints(idx) || updated;
+			}
+		}
+		if (updated) {
+			getConfig().store(getContext(), getConfigStorage());
+		}
 	}
 
 	//// GETTERS ////
