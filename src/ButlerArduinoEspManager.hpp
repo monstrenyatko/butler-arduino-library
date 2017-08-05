@@ -31,6 +31,7 @@
 #include "ButlerArduinoHwUart.hpp"
 #include "ButlerArduinoEspWiFiConfigCaptivePortal.hpp"
 #include "ButlerArduinoEspHttpUpdate.hpp"
+#include "ButlerArduinoArrayBuffer.hpp"
 
 
 namespace Butler {
@@ -168,11 +169,12 @@ public:
 	}
 
 	/** Checks and installs the server fingerprints. */
-	void checkServerFingerprintsUpdate() {
+	bool checkServerFingerprintsUpdate() {
+		bool res = false;
 		String payload;
 		{
 			HTTPClient http;
-			if (getConfig().auth.paired) {
+			if (getConfig().auth.fingerprints[0].length()) {
 				http.begin(Util::makeUrl(
 						Strings::URL_MODEL_FINGERPRINTS,
 						getConfig().SERVER_ADDR,
@@ -193,6 +195,7 @@ public:
 				LOG_PRINTFLN(getContext(), "[manager] Fingerprints Update, code: %i", httpCode);
 				if (httpCode == HTTP_CODE_OK) {
 					payload = http.getString();
+					res = true;
 				}
 			} else {
 				LOG_PRINTFLN(getContext(), "[manager] ERROR, Fingerprints Update, error: %s",
@@ -232,6 +235,68 @@ public:
 		if (updated) {
 			getConfig().store(getContext(), getConfigStorage());
 		}
+		return res;
+	}
+
+	/** Authenticate */
+	bool authenticate() {
+		bool res = false;
+		if (getConfig().auth.fingerprints[0].length()) {
+			String payload;
+			{
+				String url = Util::makeUrl(Strings::URL_MODEL_TOKEN,
+						getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
+				);
+				CharArrayBuffer<> reqPayload;
+				{
+					DynamicJsonBuffer jsonBuffer;
+					JsonObject &root = jsonBuffer.createObject();
+					root[Strings::USERNAME] = getId();
+					root[Strings::PASSWORD] = getId();
+					root.printTo(reqPayload.get(), reqPayload.size());
+				}
+				HTTPClient http;
+				http.begin(url, getConfig().auth.fingerprints[0]);
+				http.addHeader(Strings::HEADER_CONTENT_TYPE, Strings::MIME_TYPE_APP_JSON);
+				int httpCode = http.POST(reqPayload.get());
+				if (httpCode > 0) {
+					LOG_PRINTFLN(getContext(), "[manager] Authentication, code: %i", httpCode);
+					if (httpCode == HTTP_CODE_OK) {
+						payload = http.getString();
+					}
+				} else {
+					LOG_PRINTFLN(getContext(), "[manager] ERROR, Authentication, error: %s",
+							http.errorToString(httpCode).c_str()
+					);
+				}
+			}
+			bool updated = false;
+			if (payload.length()) {
+				{
+					DynamicJsonBuffer jsonBuffer;
+					JsonObject &root = jsonBuffer.parseObject(payload.begin());
+					if (JsonObject::invalid() != root) {
+						const char *v = root[Strings::TOKEN];
+						if (v) {
+							LOG_PRINTFLN(getContext(), "[manager] Token: %s", v);
+							res = true;
+							if (!getConfig().auth.token.equals(v)) {
+								getConfig().auth.token = v;
+								updated = true;
+							}
+						}
+					} else {
+						LOG_PRINTFLN(getContext(), "[config] ERROR, Authentication failure: can't pars");
+					}
+				}
+			}
+			if (updated) {
+				getConfig().store(getContext(), getConfigStorage());
+			}
+		} else {
+			LOG_PRINTFLN(getContext(), "[manager] ERROR, Authentication failure: fingerprint required");
+		}
+		return res;
 	}
 
 	//// GETTERS ////

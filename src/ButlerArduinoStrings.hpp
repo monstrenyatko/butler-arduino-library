@@ -24,6 +24,7 @@ namespace Arduino {
 namespace Strings {
 
 extern const char EMPTY[];
+extern const char SPACE[];
 extern const char APP[];
 extern const char WIFI[];
 extern const char AUTH[];
@@ -33,6 +34,8 @@ extern const char PASSPHRASE[];
 extern const char PAIRED[];
 extern const char FINGERPRINTS[];
 extern const char TOKEN[];
+extern const char USERNAME[];
+extern const char PASSWORD[];
 
 extern const char PAYLOAD_KEY_VERSION[];
 extern const char PAYLOAD_KEY_ID[];
@@ -48,10 +51,16 @@ extern const char MODEL_KEY_NAMESPACE[];
 extern const char MODEL_KEY_GROUP[];
 extern const char MODEL_KEY_ID[];
 
+extern const char HEADER_AUTHORIZATION[];
+extern const char HEADER_CONTENT_TYPE[];
+
+extern const char MIME_TYPE_APP_JSON[];
+
 extern const char URL_MODEL_UPDATE_FW[];
 extern const char URL_MODEL_UPDATE_FW_NOT_S[];
 extern const char URL_MODEL_FINGERPRINTS[];
 extern const char URL_MODEL_FINGERPRINTS_NOT_S[];
+extern const char URL_MODEL_TOKEN[];
 
 extern const char TOPIC_MODEL_CONFIG[];
 extern const char TOPIC_MODEL_DATA[];

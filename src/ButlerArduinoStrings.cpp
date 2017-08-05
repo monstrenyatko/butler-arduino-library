@@ -22,6 +22,7 @@ namespace Arduino {
 namespace Strings {
 
 const char EMPTY[] = "";
+const char SPACE[] = " ";
 const char APP[] = "app";
 const char WIFI[] = "wifi";
 const char AUTH[] = "auth";
@@ -31,6 +32,8 @@ const char PASSPHRASE[] = "passphrase";
 const char PAIRED[] = "paired";
 const char FINGERPRINTS[] = "fingerprints";
 const char TOKEN[] = "token";
+const char USERNAME[] = "username";
+const char PASSWORD[] = "password";
 
 const char PAYLOAD_KEY_VERSION[] = "v";
 const char PAYLOAD_KEY_ID[] = "id";
@@ -46,10 +49,16 @@ const char MODEL_KEY_NAMESPACE[] = "<ns>";
 const char MODEL_KEY_GROUP[] = "<g>";
 const char MODEL_KEY_ID[] = "<id>";
 
+const char HEADER_AUTHORIZATION[] = "Authorization";
+const char HEADER_CONTENT_TYPE[] = "Content-Type";
+
+const char MIME_TYPE_APP_JSON[] = "application/json";
+
 const char URL_MODEL_UPDATE_FW[] = "https://<a>:<p>/fw/update/";
 const char URL_MODEL_UPDATE_FW_NOT_S[] = "http://<a>:<p>/fw/update/<id>/";
 const char URL_MODEL_FINGERPRINTS[] = "https://<a>:<p>/cert/fingerprints/<a>/";
 const char URL_MODEL_FINGERPRINTS_NOT_S[] = "http://<a>:<p>/cert/fingerprints/<a>/";
+const char URL_MODEL_TOKEN[] = "https://<a>:<p>/auth/token/";
 
 const char TOPIC_MODEL_CONFIG[] = "<ns>/<g>/<id>/config";
 const char TOPIC_MODEL_DATA[] = "<ns>/<g>/<id>/data";

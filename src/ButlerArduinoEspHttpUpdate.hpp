@@ -49,7 +49,7 @@ public:
 			http.begin(url);
 		}
 		if (authToken.length()) {
-			http.addHeader(F("Authorization"), String("Token ") + authToken);
+			http.addHeader(Strings::HEADER_AUTHORIZATION, String(Strings::TOKEN) + Strings::SPACE + authToken);
 		}
 		HTTPUpdateResult res = handleUpdate(http, Strings::EMPTY, false);
 		switch (res) {
