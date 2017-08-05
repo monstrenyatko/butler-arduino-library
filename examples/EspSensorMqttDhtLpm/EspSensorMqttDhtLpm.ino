@@ -22,6 +22,7 @@
 #include <ButlerArduinoStrings.hpp>
 #include <ButlerArduinoJsonConfig.hpp>
 #include <ButlerArduinoWiFiJsonConfig.hpp>
+#include <ButlerArduinoAuthJsonConfig.hpp>
 #include <ButlerArduinoEspManager.hpp>
 
 
@@ -87,10 +88,12 @@ struct Configuration: public Butler::Arduino::Config::JsonConfig<2> {
 	String											mqttTopicData;
 	//// PERSISTENCES ////
 	Butler::Arduino::Config::WiFiJsonConfig			wifi;
+	Butler::Arduino::Config::AuthJsonConfig			auth;
 	AppJsonConfig									app;
 
 	Configuration() {
 		addNode(Butler::Arduino::Strings::WIFI, wifi);
+		addNode(Butler::Arduino::Strings::AUTH, auth);
 		addNode(Butler::Arduino::Strings::APP, app);
 	}
 };
@@ -125,18 +128,18 @@ void buildMessagePayload(char* buffer, int size) {
 	// Allocate buffer
 	DynamicJsonBuffer jsonBuffer(BUFFER_SIZE);
 	// Encode message
-	JsonArray& data = jsonBuffer.createArray();
+	JsonArray &data = jsonBuffer.createArray();
 	if (sensor.verify(vTemp)) {
-		JsonObject& obj = jsonBuffer.createObject();
+		JsonObject &obj = jsonBuffer.createObject();
 		obj[Butler::Arduino::Strings::PAYLOAD_KEY_SENSOR_DATA_TYPE_TEMPERATURE] = vTemp;
 		data.add(obj);
 	}
 	if (sensor.verify(vHumid)) {
-		JsonObject& obj = jsonBuffer.createObject();
+		JsonObject &obj = jsonBuffer.createObject();
 		obj[Butler::Arduino::Strings::PAYLOAD_KEY_SENSOR_DATA_TYPE_HUMIDITY] = vHumid;
 		data.add(obj);
 	}
-	JsonObject& root = jsonBuffer.createObject();
+	JsonObject &root = jsonBuffer.createObject();
 	root[Butler::Arduino::Strings::PAYLOAD_KEY_VERSION] = 1;
 	root[Butler::Arduino::Strings::PAYLOAD_KEY_ID] = lConst.id;
 	root[Butler::Arduino::Strings::PAYLOAD_KEY_DATA] = data;
@@ -230,6 +233,9 @@ void loop() {
 	LOG_PRINTFLN(manager.getContext(), "#################################");
 	manager.waitNetwork();
 	manager.waitNtpTime();
+	manager.checkServerFingerprintsUpdate();
+	manager.authenticate();
+	manager.checkFirmwareUpdate();
 	// Establish TCP connection
 	manager.connectServer(network, manager.getConfig().SERVER_ADDR, 1883);
 	// Action
