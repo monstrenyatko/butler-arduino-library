@@ -61,6 +61,14 @@ struct AuthJsonConfig: public JsonConfigNode, public AuthConfig<> {
 				updated = resetFingerprints(idx) || updated;
 			}
 		}
+		// TOKEN
+		{
+			const char* v = json[Strings::TOKEN];
+			if (v && !token.equals(v)) {
+				token = v;
+				updated = true;
+			}
+		}
 		return updated;
 	}
 
@@ -76,6 +84,10 @@ struct AuthJsonConfig: public JsonConfigNode, public AuthConfig<> {
 				}
 			}
 			json[Strings::FINGERPRINTS] = o;
+		}
+		// TOKEN
+		if (token.length()) {
+			json[Strings::TOKEN] = token.c_str();
 		}
 	}
 

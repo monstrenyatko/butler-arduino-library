@@ -20,7 +20,6 @@
 #include <WString.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266httpUpdate.h>
 /* Internal Includes */
 #include "ButlerArduinoStrings.hpp"
 #include "ButlerArduinoLogger.hpp"
@@ -31,6 +30,7 @@
 #include "ButlerArduinoUtil.hpp"
 #include "ButlerArduinoHwUart.hpp"
 #include "ButlerArduinoEspWiFiConfigCaptivePortal.hpp"
+#include "ButlerArduinoEspHttpUpdate.hpp"
 
 
 namespace Butler {
@@ -41,7 +41,7 @@ class EspManager {
 public:
 	EspManager(uint32_t* lpmData = nullptr, uint32_t lpmDataSize = 0)
 		: mLpmData(lpmData), mLpmDataSize(lpmDataSize),
-		mHwUart({getConfig().HW_UART_SPEED})
+		mHwUart({getConfig().HW_UART_SPEED}), mHttpUpdate(getContext())
 	{}
 
 	//// ACTIONS ////
@@ -55,7 +55,7 @@ public:
 		mCtx.time = &getClock();
 		//// LOG ////
 		mCtx.logger = &getHwUart();
-		LOG_PRINTFLN(getContext(), Strings::EMPTY);
+		LOG_PRINTFLN(getContext(), "%s", Strings::EMPTY);
 		//// LPM ////
 		mCtx.lpm = &mLpm;
 		//// CONFIGURATION ////
@@ -151,37 +151,20 @@ public:
 	}
 
 	/** Checks and installs the FW update. */
-	HTTPUpdateResult checkFirmwareUpdate(const String& url, const String& httpsFingerprint = Strings::EMPTY) {
-		HTTPUpdateResult res;
-		if (httpsFingerprint.length()) {
-			res = ESPhttpUpdate.update(url, Strings::EMPTY, httpsFingerprint);
-		} else {
-			res = ESPhttpUpdate.update(url);
-		}
-		switch(res) {
-			case HTTP_UPDATE_FAILED:
-				LOG_PRINTFLN(getContext(), "[manager] Fw Update failed");
-				break;
-			case HTTP_UPDATE_NO_UPDATES:
-				LOG_PRINTFLN(getContext(), "[manager] No Fw Updates");
-				break;
-			case HTTP_UPDATE_OK:
-				LOG_PRINTFLN(getContext(), "[manager] Fw Update is OK");
-				break;
-			default:
-				LOG_PRINTFLN(getContext(), "[manager] Fw Update status is UNK");
-				break;
-		}
-		return res;
+	HTTPUpdateResult checkFirmwareUpdate() {
+		String url = Util::makeUrl(Strings::URL_MODEL_UPDATE_FW,
+				getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
+		);
+		return getHttpUpdate().update(url, getConfig().auth.fingerprints[0], getConfig().auth.token);
 	}
 
-	/** Checks and installs the FW update over HTTP. */
+	/** Checks and installs the FW update using HTTP. */
 	HTTPUpdateResult checkFirmwareUpdateNotSecure() {
 		String url = Util::makeUrl(Strings::URL_MODEL_UPDATE_FW_NOT_S,
 				getConfig().SERVER_ADDR, getConfig().SERVER_HTTP_PORT
 		);
 		Util::setModelKey(url, Strings::MODEL_KEY_ID, getId());
-		return checkFirmwareUpdate(url);
+		return getHttpUpdate().update(url);
 	}
 
 	/** Checks and installs the server fingerprints. */
@@ -212,7 +195,7 @@ public:
 					payload = http.getString();
 				}
 			} else {
-				LOG_PRINTFLN(getContext(), "[manager] Error, Fingerprints Update, error: %s",
+				LOG_PRINTFLN(getContext(), "[manager] ERROR, Fingerprints Update, error: %s",
 						http.errorToString(httpCode).c_str()
 				);
 			}
@@ -284,6 +267,10 @@ public:
 		return mHwUart;
 	}
 
+	EspHttpUpdate& getHttpUpdate() {
+		return mHttpUpdate;
+	}
+
 private:
 	String											mId;
 	String											mName;
@@ -295,6 +282,7 @@ private:
 	uint32_t										mLpmDataSize;
 	Time::EspClock									mClock;
 	HwUart											mHwUart;
+	EspHttpUpdate									mHttpUpdate;
 
 	void setupConfigMode() {
 		//// SETUP ////

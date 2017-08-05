@@ -28,6 +28,7 @@ template<uint8_t FINGERPRINTS_QTY = 2>
 struct AuthConfig {
 	bool											paired = false;
 	String											fingerprints[FINGERPRINTS_QTY];
+	String											token;
 
 	AuthConfig() {
 		for (uint8_t i = 0; i < getMaxFingerprintsQty(); ++i) {
@@ -44,6 +45,7 @@ struct AuthConfig {
 				fingerprints[i] = String();
 			}
 		}
+		token = o.token;
 	}
 
 	bool isValid() const {
@@ -56,6 +58,7 @@ struct AuthConfig {
 		for (uint8_t i = 0; res && i < getMaxFingerprintsQty(); ++i) {
 			res = fingerprints[i].equals(o.fingerprints[i]);
 		}
+		res = res && (token.equals(o.token));
 		return res;
 	}
 

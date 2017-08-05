@@ -32,6 +32,7 @@ const char SSID[] = "ssid";
 const char PASSPHRASE[] = "passphrase";
 const char PAIRED[] = "paired";
 const char FINGERPRINTS[] = "fingerprints";
+const char TOKEN[] = "token";
 
 const char PAYLOAD_KEY_VERSION[] = "v";
 const char PAYLOAD_KEY_ID[] = "id";
