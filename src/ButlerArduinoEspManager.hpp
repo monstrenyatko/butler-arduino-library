@@ -135,7 +135,10 @@ public:
 	}
 
 	/** Waits the time data using NTP protocol. */
-	bool waitNtpTime(const char* ntpServer = getConfig().SERVER_ADDR, bool sleepOnFailure = true) {
+	bool waitNtpTime(const char* ntpServer = nullptr, bool sleepOnFailure = true) {
+		if (!ntpServer) {
+			ntpServer = getConfig().SERVER_ADDR;
+		}
 		getClock().initRtc(ntpServer);
 		bool updated = (0 != getClock().rtc());
 		if (updated) {
