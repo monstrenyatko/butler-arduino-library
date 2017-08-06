@@ -31,19 +31,24 @@ public:
 		idle(ms, nullptr, 0);
 	}
 
-	void idle(uint32_t ms, uint32_t* data, uint32_t dataSize) {
+	void idle(uint32_t ms, uint32_t* data, uint32_t dataSize, uint32_t* data2 = nullptr, uint32_t data2Size = 0) {
 		// Initialize
 		LpmControl header;
 		header.ctx.msCounter = ms;
 		header.ctx.state = COUNT;
 		if (data) {
 			writeData(data, dataSize);
+			if (data2) {
+				writeData(data2, data2Size, dataSize);
+			}
 		}
 		// Begin
-		update(header, data, dataSize);
+		update(header, data, dataSize, data2, data2Size);
 	}
 
-	bool check(uint8_t resetPin, uint32_t* data = nullptr, uint32_t dataSize = 0) {
+	bool check(uint8_t resetPin, uint32_t* data = nullptr, uint32_t dataSize = 0,
+			uint32_t* data2 = nullptr, uint32_t data2Size = 0)
+	{
 		if (LOW == digitalRead(resetPin)) {
 			resetHeader();
 			return false;
@@ -53,6 +58,9 @@ public:
 		readHeader(header);
 		if (data) {
 			readData(data, dataSize);
+			if (data2) {
+				readData(data2, data2Size, dataSize);
+			}
 		}
 		// Check CRC
 		{
@@ -60,14 +68,23 @@ public:
 			crc = Crc::crc32Continue(crc, reinterpret_cast<uint8_t*>(&(header.ctx)), sizeof(header.ctx));
 			if (data) {
 				crc = Crc::crc32Continue(crc, reinterpret_cast<uint8_t*>(data), dataSize);
+				if (data2) {
+					crc = Crc::crc32Continue(crc, reinterpret_cast<uint8_t*>(data2), data2Size);
+				}
 			}
 			crc = Crc::crc32End(crc);
 			if (header.crc != crc) {
+				if (data) {
+					memset(data, 0, dataSize);
+					if (data2) {
+						memset(data2, 0, data2Size);
+					}
+				}
 				return false;
 			}
 		}
 		// Continue
-		update(header, data, dataSize);
+		update(header, data, dataSize, data2, data2Size);
 		return true;
 	}
 
@@ -92,7 +109,9 @@ private:
 
 	const uint32_t										ONE_HOUR_MS = 1*60*60*1000;
 
-	void update(LpmControl& header, uint32_t* data = nullptr, uint32_t dataSize = 0) {
+	void update(LpmControl& header, uint32_t* data = nullptr, uint32_t dataSize = 0,
+			uint32_t* data2 = nullptr, uint32_t data2Size = 0)
+	{
 		switch(header.ctx.state) {
 			case COUNT:
 			{
@@ -117,6 +136,9 @@ private:
 					crc = Crc::crc32Continue(crc, reinterpret_cast<uint8_t*>(&(header.ctx)), sizeof(header.ctx));
 					if (data) {
 						crc = Crc::crc32Continue(crc, reinterpret_cast<uint8_t*>(data), dataSize);
+						if (data2) {
+							crc = Crc::crc32Continue(crc, reinterpret_cast<uint8_t*>(data2), data2Size);
+						}
 					}
 					crc = Crc::crc32End(crc);
 					header.crc = crc;
@@ -149,12 +171,12 @@ private:
 		ESP.rtcUserMemoryWrite(0, const_cast<uint32_t*>(reinterpret_cast<const uint32_t*>(&header)), sizeof(LpmControl));
 	}
 
-	void readData(uint32_t* data, uint32_t dataSize) {
-		ESP.rtcUserMemoryWrite(sizeof(LpmControl), data, dataSize);
+	void readData(uint32_t* data, uint32_t dataSize, uint32_t offset = 0) {
+		ESP.rtcUserMemoryRead(sizeof(LpmControl) + offset, data, dataSize);
 	}
 
-	void writeData(const uint32_t* data, uint32_t dataSize) {
-		ESP.rtcUserMemoryWrite(sizeof(LpmControl), const_cast<uint32_t*>(data), dataSize);
+	void writeData(const uint32_t* data, uint32_t dataSize, uint32_t offset = 0) {
+		ESP.rtcUserMemoryWrite(sizeof(LpmControl) + offset, const_cast<uint32_t*>(data), dataSize);
 	}
 };
 
