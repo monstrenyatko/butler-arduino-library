@@ -37,6 +37,22 @@
 namespace Butler {
 namespace Arduino {
 
+struct RotateFingerprintsStatus {
+	typedef enum {
+		OK,
+		ERROR,
+		ERROR_VERIFY
+	} Type;
+};
+
+struct AuthenticateStatus {
+	typedef enum {
+		OK,
+		ERROR,
+		ERROR_FORBIDDEN
+	} Type;
+};
+
 template<class CONFIG_T>
 class EspManager {
 public:
@@ -172,12 +188,12 @@ public:
 	}
 
 	/** Checks and installs the server fingerprints. */
-	bool checkServerFingerprintsUpdate() {
+	bool checkServerFingerprintsUpdate(bool secure = true) {
 		bool res = false;
 		String payload;
 		{
 			HTTPClient http;
-			if (getConfig().auth.fingerprints[0].length()) {
+			if (secure) {
 				http.begin(Util::makeUrl(
 						Strings::URL_MODEL_FINGERPRINTS,
 						getConfig().SERVER_ADDR,
@@ -241,65 +257,163 @@ public:
 		return res;
 	}
 
-	/** Authenticate */
-	bool authenticate() {
-		bool res = false;
-		if (getConfig().auth.fingerprints[0].length()) {
-			String payload;
-			{
-				String url = Util::makeUrl(Strings::URL_MODEL_TOKEN,
-						getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
-				);
-				CharArrayBuffer<> reqPayload;
-				{
-					DynamicJsonBuffer jsonBuffer;
-					JsonObject &root = jsonBuffer.createObject();
-					root[Strings::USERNAME] = getId();
-					root[Strings::PASSWORD] = getId();
-					root.printTo(reqPayload.get(), reqPayload.size());
+	/** Rotates fingerprints if current one is not valid anymore. */
+	RotateFingerprintsStatus::Type rotateServerFingerprints() {
+		LOG_PRINTFLN(getContext(), "[manager] Rotate fingerprints");
+		bool updated = false;
+		{
+			WiFiClientSecure client;
+			if (client.connect(getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT)) {
+				bool verified = false;
+				for (uint8_t i = 0; i < getConfig().auth.getMaxFingerprintsQty(); ++i) {
+					String &value = getConfig().auth.fingerprints[i];
+					if (value.length() && client.verify(value.c_str(), getConfig().SERVER_ADDR)) {
+						LOG_PRINTFLN(getContext(), "[manager] Switch to fingerprint: %s", value.c_str());
+						verified = true;
+						updated = getConfig().auth.resetFingerprints(0, i);
+						break;
+					}
 				}
-				HTTPClient http;
-				http.begin(url, getConfig().auth.fingerprints[0]);
-				http.addHeader(Strings::HEADER_CONTENT_TYPE, Strings::MIME_TYPE_APP_JSON);
-				int httpCode = http.POST(reqPayload.get());
-				if (httpCode > 0) {
-					LOG_PRINTFLN(getContext(), "[manager] Authentication, code: %i", httpCode);
-					if (httpCode == HTTP_CODE_OK) {
+				if (!verified) {
+					return RotateFingerprintsStatus::ERROR_VERIFY;
+				}
+			} else {
+				LOG_PRINTFLN(getContext(), "[manager] ERROR, Rotate fingerprints: can't connect");
+				return RotateFingerprintsStatus::ERROR;
+			}
+		}
+		if (updated) {
+			getConfig().store(getContext(), getConfigStorage());
+		}
+		return RotateFingerprintsStatus::OK;
+	}
+
+	/** Authenticate */
+	AuthenticateStatus::Type authenticate() {
+		AuthenticateStatus::Type res = AuthenticateStatus::ERROR;
+		String payload;
+		// Send authentication request
+		{
+			String url = Util::makeUrl(Strings::URL_MODEL_TOKEN,
+					getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
+			);
+			CharArrayBuffer<> reqPayload;
+			{
+				DynamicJsonBuffer jsonBuffer;
+				JsonObject &root = jsonBuffer.createObject();
+				root[Strings::USERNAME] = getId();
+				root[Strings::PASSWORD] = getId();
+				root.printTo(reqPayload.get(), reqPayload.size());
+			}
+			HTTPClient http;
+			http.begin(url, getConfig().auth.fingerprints[0]);
+			http.addHeader(Strings::HEADER_CONTENT_TYPE, Strings::MIME_TYPE_APP_JSON);
+			int httpCode = http.POST(reqPayload.get());
+			if (httpCode > 0) {
+				LOG_PRINTFLN(getContext(), "[manager] Authentication, code: %i", httpCode);
+				switch(httpCode) {
+					case HTTP_CODE_OK:
 						payload = http.getString();
+						break;
+					case HTTP_CODE_FORBIDDEN:
+						res = AuthenticateStatus::ERROR_FORBIDDEN;
+						break;
+					default:
+						break;
+				}
+			} else {
+				LOG_PRINTFLN(getContext(), "[manager] ERROR, Authentication, error: %s",
+						http.errorToString(httpCode).c_str()
+				);
+			}
+		}
+		// Process authentication response
+		bool updated = false;
+		if (payload.length()) {
+			{
+				DynamicJsonBuffer jsonBuffer;
+				JsonObject &root = jsonBuffer.parseObject(payload.begin());
+				if (JsonObject::invalid() != root) {
+					const char *v = root[Strings::TOKEN];
+					if (v) {
+						LOG_PRINTFLN(getContext(), "[manager] Token: %s", v);
+						res = AuthenticateStatus::OK;
+						if (!getConfig().auth.token.equals(v)) {
+							getConfig().auth.token = v;
+							updated = true;
+						}
 					}
 				} else {
-					LOG_PRINTFLN(getContext(), "[manager] ERROR, Authentication, error: %s",
-							http.errorToString(httpCode).c_str()
-					);
+					LOG_PRINTFLN(getContext(), "[config] ERROR, Authentication failure: can't pars");
 				}
 			}
-			bool updated = false;
-			if (payload.length()) {
-				{
-					DynamicJsonBuffer jsonBuffer;
-					JsonObject &root = jsonBuffer.parseObject(payload.begin());
-					if (JsonObject::invalid() != root) {
-						const char *v = root[Strings::TOKEN];
-						if (v) {
-							LOG_PRINTFLN(getContext(), "[manager] Token: %s", v);
-							res = true;
-							if (!getConfig().auth.token.equals(v)) {
-								getConfig().auth.token = v;
-								updated = true;
-							}
-						}
-					} else {
-						LOG_PRINTFLN(getContext(), "[config] ERROR, Authentication failure: can't pars");
-					}
-				}
-			}
-			if (updated) {
-				getConfig().store(getContext(), getConfigStorage());
-			}
-		} else {
-			LOG_PRINTFLN(getContext(), "[manager] ERROR, Authentication failure: fingerprint required");
+		}
+		if (updated) {
+			getConfig().store(getContext(), getConfigStorage());
 		}
 		return res;
+	}
+
+	/** Checks for the updates when it's time to check. */
+	bool check() {
+		if (!isUpdatesTime()) return true;
+		bool res = false;
+		getHttpUpdate().rebootOnUpdate(true);
+		if (isServerFingerprint()) {
+			if (checkServerFingerprintsUpdate()) {
+				AuthenticateStatus::Type authStatus = AuthenticateStatus::OK;
+				if (!isAuthenticated()) {
+					authStatus = authenticate();
+					if (AuthenticateStatus::ERROR_FORBIDDEN == authStatus) {
+						sendSos("Forbidden authentication");
+					}
+				}
+				if (AuthenticateStatus::OK == authStatus) {
+					switch(checkFirmwareUpdate()) {
+						case HTTP_UPDATE_NO_UPDATES:
+							res = true;
+							break;
+						case HTTP_UPDATE_OK:
+							// Wait the reboot
+							break;
+						default:
+							sendSos("Failed FW update");
+							break;
+					}
+				}
+			} else {
+				if (rotateServerFingerprints() == RotateFingerprintsStatus::ERROR_VERIFY) {
+					sendSos("Bad fingerprints");
+				}
+			}
+		} else {
+			// Device is not paired with network
+			switch(checkFirmwareUpdateNotSecure()) {
+				case HTTP_UPDATE_NO_UPDATES:
+					checkServerFingerprintsUpdate(false);
+					break;
+				case HTTP_UPDATE_OK:
+					// Wait the reboot
+					break;
+				default:
+					uint32_t retryTm = getConfig().NET_CONNECT_ERROR_RETRY_TM_MS;
+					idle(retryTm);
+			}
+		}
+		return res;
+	}
+
+	/** Send error message using HTTP */
+	void sendSos(const char *msg) {
+		// TODO: send error using HTTP
+	}
+
+	bool isAuthenticated() {
+		return getConfig().auth.token.length();
+	}
+
+	bool isServerFingerprint() {
+		return getConfig().auth.fingerprints[0].length();
 	}
 
 	//// GETTERS ////
@@ -428,6 +542,10 @@ private:
 		LOG_PRINTFLN(getContext(), "### ID          : %s", getId().c_str());
 		LOG_PRINTFLN(getContext(), "### NAME        : %s", getName().c_str());
 		LOG_PRINTFLN(getContext(), "#################################");
+	}
+
+	bool isUpdatesTime() {
+		return true;
 	}
 };
 

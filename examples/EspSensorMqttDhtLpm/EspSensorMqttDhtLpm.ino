@@ -233,13 +233,14 @@ void loop() {
 	LOG_PRINTFLN(manager.getContext(), "#################################");
 	manager.waitNetwork();
 	manager.waitNtpTime();
-	manager.checkServerFingerprintsUpdate();
-	manager.authenticate();
-	manager.checkFirmwareUpdate();
-	// Establish TCP connection
-	manager.connectServer(network, manager.getConfig().SERVER_ADDR, 1883);
-	// Action
-	Butler::Arduino::LoopStatus::type loopStatus = Butler::Arduino::Loop::loop(manager.getContext(), lCtx, lConst);
+	// Loop
+	Butler::Arduino::LoopStatus::type loopStatus = Butler::Arduino::LoopStatus::CONNECTION_FAILURE;
+	if (manager.check()) {
+		// Establish TCP connection
+		manager.connectServer(network, manager.getConfig().SERVER_ADDR, 1883);
+		// Action
+		loopStatus = Butler::Arduino::Loop::loop(manager.getContext(), lCtx, lConst);
+	}
 	// Idle
 	unsigned long idlePeriodMs = (loopStatus == Butler::Arduino::LoopStatus::CONNECTION_FAILURE)
 			? manager.getConfig().NET_CONNECT_ERROR_RETRY_TM_MS
