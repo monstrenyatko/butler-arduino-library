@@ -53,10 +53,14 @@ struct AuthenticateStatus {
 	} Type;
 };
 
+struct EspManagerSleepMemory {
+	uint32_t										fwUpdateTsSec = 0;
+} __attribute__((aligned(4)));
+
 template<class CONFIG_T>
 class EspManager {
 public:
-	EspManager(uint32_t* lpmData = nullptr, uint32_t lpmDataSize = 0)
+	EspManager(uint32_t *lpmData = nullptr, uint32_t lpmDataSize = 0)
 		: mLpmData(lpmData), mLpmDataSize(lpmDataSize),
 		mHwUart({getConfig().HW_UART_SPEED}), mHttpUpdate(getContext())
 	{}
@@ -105,7 +109,10 @@ public:
 		if (debug) {
 			LOG_PRINTFLN(getContext(), "Sleep for %lu Ms", ms);
 		}
-		getLpm().idle(ms, mLpmData, mLpmDataSize);
+		getLpm().idle(ms,
+			reinterpret_cast<uint32_t*>(&mSleepMemory), sizeof(mSleepMemory),
+			mLpmData, mLpmDataSize
+		);
 	}
 
 	/** Waits the Network/WiFi connection. */
@@ -371,6 +378,7 @@ public:
 				if (AuthenticateStatus::OK == authStatus) {
 					switch(checkFirmwareUpdate()) {
 						case HTTP_UPDATE_NO_UPDATES:
+							mSleepMemory.fwUpdateTsSec = getClock().rtc();
 							res = true;
 							break;
 						case HTTP_UPDATE_OK:
@@ -460,7 +468,8 @@ private:
 	CONFIG_T										mConfig;
 	EspStorage										mConfigStorage;
 	EspLpm											mLpm;
-	uint32_t*										mLpmData;
+	EspManagerSleepMemory							mSleepMemory;
+	uint32_t										*mLpmData;
 	uint32_t										mLpmDataSize;
 	Time::EspClock									mClock;
 	HwUart											mHwUart;
@@ -530,7 +539,11 @@ private:
 			}
 		}
 		//// LPM-CHECK ////
-		getLpm().check(getConfig().CFG_RESET_PIN, mLpmData, mLpmDataSize);
+		if (!getLpm().check(getConfig().CFG_RESET_PIN,
+				reinterpret_cast<uint32_t*>(&mSleepMemory), sizeof(mSleepMemory),
+				mLpmData, mLpmDataSize)) {
+			LOG_PRINTFLN(getContext(), "Sleep persistence was not recovered");
+		}
 		//// NETWORK ////
 		WiFi.persistent(false);
 		WiFi.mode(WIFI_STA);
@@ -545,7 +558,11 @@ private:
 	}
 
 	bool isUpdatesTime() {
-		return true;
+		uint32_t now = getClock().rtc();
+		uint32_t lastUpdate = mSleepMemory.fwUpdateTsSec;
+		uint32_t nextUpdate = lastUpdate + 24*60*60L;
+		LOG_PRINTFLN(getContext(), "[manager] Last FW update, time: %lu sec", lastUpdate);
+		return !lastUpdate || (now && (nextUpdate < now));
 	}
 };
 
