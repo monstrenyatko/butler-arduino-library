@@ -30,14 +30,6 @@ struct AuthJsonConfig: public JsonConfigNode, public AuthConfig<> {
 
 	bool decode(JsonObject &json) {
 		bool updated = false;
-		// PAIRED
-		if (json.containsKey(Strings::PAIRED)) {
-			bool v = json[Strings::PAIRED];
-			if (paired != v) {
-				paired = v;
-				updated = true;
-			}
-		}
 		// FINGERPRINTS
 		{
 			JsonArray &o = json[Strings::FINGERPRINTS];
@@ -73,8 +65,6 @@ struct AuthJsonConfig: public JsonConfigNode, public AuthConfig<> {
 	}
 
 	void encode(JsonObject &json, JsonBuffer &jsonBuffer) {
-		// PAIRED
-		json[Strings::PAIRED] = paired;
 		// FINGERPRINTS
 		if (getFingerprintsQty()) {
 			JsonArray &o = jsonBuffer.createArray();

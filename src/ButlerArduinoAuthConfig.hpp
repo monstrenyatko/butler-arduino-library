@@ -26,7 +26,6 @@ namespace Config {
 
 template<uint8_t FINGERPRINTS_QTY = 2>
 struct AuthConfig {
-	bool											paired = false;
 	String											fingerprints[FINGERPRINTS_QTY];
 	String											token;
 
@@ -37,7 +36,6 @@ struct AuthConfig {
 	}
 
 	void set(const AuthConfig &o) {
-		paired = o.paired;
 		for (uint8_t i = 0; i < getMaxFingerprintsQty(); ++i) {
 			if (i < o.getMaxFingerprintsQty()) {
 				fingerprints[i] = o.fingerprints[i];
@@ -53,8 +51,7 @@ struct AuthConfig {
 	}
 
 	bool isEqual(const AuthConfig &o) const {
-		bool res = (paired == o.paired);
-		res = res && (getMaxFingerprintsQty() == o.getMaxFingerprintsQty());
+		bool res = (getMaxFingerprintsQty() == o.getMaxFingerprintsQty());
 		for (uint8_t i = 0; res && i < getMaxFingerprintsQty(); ++i) {
 			res = fingerprints[i].equals(o.fingerprints[i]);
 		}
@@ -76,9 +73,9 @@ struct AuthConfig {
 		return res;
 	}
 
-	bool resetFingerprints(uint8_t startIdx = 0) {
+	bool resetFingerprints(uint8_t startIdx = 0, uint8_t stopIdx = FINGERPRINTS_QTY) {
 		bool updated = false;
-		for (uint8_t i = startIdx; i < getMaxFingerprintsQty(); ++i) {
+		for (uint8_t i = startIdx; i < stopIdx && i < getMaxFingerprintsQty(); ++i) {
 			if (fingerprints[i].length()) {
 				fingerprints[i] = String();
 				updated = true;
