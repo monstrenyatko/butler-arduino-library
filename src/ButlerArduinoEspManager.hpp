@@ -465,12 +465,12 @@ private:
 	String											mId;
 	String											mName;
 	Context											mCtx;
-	CONFIG_T										mConfig;
+	CONFIG_T											mConfig;
 	EspStorage										mConfigStorage;
 	EspLpm											mLpm;
 	EspManagerSleepMemory							mSleepMemory;
-	uint32_t										*mLpmData;
-	uint32_t										mLpmDataSize;
+	uint32_t											*mLpmData;
+	uint32_t											mLpmDataSize;
 	Time::EspClock									mClock;
 	HwUart											mHwUart;
 	EspHttpUpdate									mHttpUpdate;
@@ -479,7 +479,7 @@ private:
 		//// SETUP ////
 		LOG_PRINTFLN(getContext(), "[setup] CONFIG mode");
 		Butler::Arduino::CaptivePortal::WiFiConfig configPortal;
-		const char* ssid = getName().c_str();
+		const char *ssid = getName().c_str();
 		configPortal.start(
 				ssid,
 				[&](Config::WiFiConfig& wifiConfig)
