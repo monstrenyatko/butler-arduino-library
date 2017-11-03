@@ -20,6 +20,7 @@
 #include <WString.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
+#include <FS.h>
 /* Internal Includes */
 #include "ButlerArduinoStrings.hpp"
 #include "ButlerArduinoLogger.hpp"
@@ -54,7 +55,7 @@ struct AuthenticateStatus {
 };
 
 struct EspManagerSleepMemory {
-	uint32_t										fwUpdateTsSec = 0;
+	uint32_t										updateTsSec = 0;
 } __attribute__((aligned(4)));
 
 template<class CONFIG_T>
@@ -79,6 +80,8 @@ public:
 		LOG_PRINTFLN(getContext(), "%s", Strings::EMPTY);
 		//// LPM ////
 		mCtx.lpm = &mLpm;
+		//// FS ////
+		SPIFFS.begin();
 		//// CONFIGURATION ////
 		bool configLoaded = getConfig().load(getContext(), getConfigStorage());
 		//// SETUP MODE
@@ -182,7 +185,19 @@ public:
 		String url = Util::makeUrl(Strings::URL_MODEL_UPDATE_FW,
 				getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
 		);
-		return getHttpUpdate().update(url, getConfig().auth.fingerprints[0], getConfig().auth.token);
+		HTTPUpdateResult res = getHttpUpdate().update(url, getConfig().auth.fingerprints[0], getConfig().auth.token);
+		switch (res) {
+			case HTTP_UPDATE_NO_UPDATES:
+				break;
+			case HTTP_UPDATE_OK:
+				// reboot is coming
+				yield();
+				break;
+			default:
+				sendSos("Failed FW update");
+				break;
+		}
+		return res;
 	}
 
 	/** Checks and installs the FW update using HTTP. */
@@ -191,7 +206,18 @@ public:
 				getConfig().SERVER_ADDR, getConfig().SERVER_HTTP_PORT
 		);
 		Util::setModelKey(url, Strings::MODEL_KEY_ID, getId());
-		return getHttpUpdate().update(url);
+		HTTPUpdateResult res = getHttpUpdate().update(url);
+		switch (res) {
+			case HTTP_UPDATE_NO_UPDATES:
+				break;
+			case HTTP_UPDATE_OK:
+				// reboot is coming
+				yield();
+				break;
+			default:
+				break;
+		}
+		return res;
 	}
 
 	/** Checks and installs the server fingerprints. */
@@ -264,6 +290,35 @@ public:
 		return res;
 	}
 
+	/** Checks and installs the CA certificates. */
+	HTTPUpdateResult checkCaUpdate() {
+		String url = Util::makeUrl(Strings::URL_MODEL_CERT_CA,
+				getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
+		);
+		Util::setModelKey(url, Strings::MODEL_KEY_FORM, Strings::CERT_FORM_DER);
+		return getHttpUpdate().updateFile(Strings::FILE_NAME_CERT_CA_CRT, url, getConfig().auth.fingerprints[0], getConfig().auth.token);
+	}
+
+	/** Checks and installs the client public certificate. */
+	HTTPUpdateResult checkCrtUpdate() {
+		String url = Util::makeUrl(Strings::URL_MODEL_CERT,
+				getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
+		);
+		Util::setModelKey(url, Strings::MODEL_KEY_FORM, Strings::CERT_FORM_DER);
+		Util::setModelKey(url, Strings::MODEL_KEY_TYPE, Strings::CERT_TYPE_CRT);
+		return getHttpUpdate().updateFile(Strings::FILE_NAME_CERT_CRT, url, getConfig().auth.fingerprints[0], getConfig().auth.token);
+	}
+
+	/** Checks and installs the client private certificate. */
+	HTTPUpdateResult checkCrtKeyUpdate() {
+		String url = Util::makeUrl(Strings::URL_MODEL_CERT,
+				getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
+		);
+		Util::setModelKey(url, Strings::MODEL_KEY_FORM, Strings::CERT_FORM_DER);
+		Util::setModelKey(url, Strings::MODEL_KEY_TYPE, Strings::CERT_TYPE_KEY);
+		return getHttpUpdate().updateFile(Strings::FILE_NAME_CERT_KEY, url, getConfig().auth.fingerprints[0], getConfig().auth.token);
+	}
+
 	/** Rotates fingerprints if current one is not valid anymore. */
 	RotateFingerprintsStatus::Type rotateServerFingerprints() {
 		LOG_PRINTFLN(getContext(), "[manager] Rotate fingerprints");
@@ -324,13 +379,16 @@ public:
 						break;
 					case HTTP_CODE_FORBIDDEN:
 						res = AuthenticateStatus::ERROR_FORBIDDEN;
-						break;
+						// no break
 					default:
+						LOG_PRINTFLN(getContext(), "[manager] ERROR, Authentication, error-payload: %s",
+							http.getString().c_str()
+						);
 						break;
 				}
 			} else {
 				LOG_PRINTFLN(getContext(), "[manager] ERROR, Authentication, error: %s",
-						http.errorToString(httpCode).c_str()
+					http.errorToString(httpCode).c_str()
 				);
 			}
 		}
@@ -361,9 +419,15 @@ public:
 		return res;
 	}
 
-	/** Checks for the updates when it's time to check. */
+	/**
+	 * When it is time:
+	 *     Checks and installs the updates.
+	 *     Checks pairing status and trying to pair if possible.
+	 * Note:
+	 *     Restart immediately when `false` is returned.
+	 */
 	bool check() {
-		if (!isUpdatesTime()) return true;
+		if (!isUpdateTime()) return true;
 		bool res = false;
 		getHttpUpdate().rebootOnUpdate(true);
 		if (isServerFingerprint()) {
@@ -376,36 +440,38 @@ public:
 					}
 				}
 				if (AuthenticateStatus::OK == authStatus) {
-					switch(checkFirmwareUpdate()) {
-						case HTTP_UPDATE_NO_UPDATES:
-							mSleepMemory.fwUpdateTsSec = getClock().rtc();
-							res = true;
-							break;
-						case HTTP_UPDATE_OK:
-							// Wait the reboot
-							break;
-						default:
-							sendSos("Failed FW update");
-							break;
+					// Check FW update
+					checkFirmwareUpdate();
+					// Check Files update
+					checkCaUpdate();
+					checkCrtUpdate();
+					checkCrtKeyUpdate();
+					// Check required files availability
+					if (SPIFFS.exists(Strings::FILE_NAME_CERT_CA_CRT)
+						&& SPIFFS.exists(Strings::FILE_NAME_CERT_CRT)
+						&& SPIFFS.exists(Strings::FILE_NAME_CERT_KEY))
+					{
+						// Set update time-stamp
+						mSleepMemory.updateTsSec = getClock().rtc();
+						// System is healthy
+						res = true;
 					}
 				}
 			} else {
 				if (rotateServerFingerprints() == RotateFingerprintsStatus::ERROR_VERIFY) {
 					sendSos("Bad fingerprints");
 				}
+				// Note: The updated config will be applied on next boot
 			}
 		} else {
 			// Device is not paired with network
-			switch(checkFirmwareUpdateNotSecure()) {
+			switch (checkFirmwareUpdateNotSecure()) {
+				case HTTP_UPDATE_OK:
+					break;
 				case HTTP_UPDATE_NO_UPDATES:
+				default:
 					checkServerFingerprintsUpdate(false);
 					break;
-				case HTTP_UPDATE_OK:
-					// Wait the reboot
-					break;
-				default:
-					uint32_t retryTm = getConfig().NET_CONNECT_ERROR_RETRY_TM_MS;
-					idle(retryTm);
 			}
 		}
 		return res;
@@ -413,6 +479,7 @@ public:
 
 	/** Send error message using HTTP */
 	void sendSos(const char *msg) {
+		LOG_PRINTFLN(getContext(), "[manager] ERROR, SOS: %s", msg);
 		// TODO: send error using HTTP
 	}
 
@@ -557,11 +624,11 @@ private:
 		LOG_PRINTFLN(getContext(), "#################################");
 	}
 
-	bool isUpdatesTime() {
+	bool isUpdateTime() {
 		uint32_t now = getClock().rtc();
-		uint32_t lastUpdate = mSleepMemory.fwUpdateTsSec;
+		uint32_t lastUpdate = mSleepMemory.updateTsSec;
 		uint32_t nextUpdate = lastUpdate + 24*60*60L;
-		LOG_PRINTFLN(getContext(), "[manager] Last FW update, time: %lu sec", lastUpdate);
+		LOG_PRINTFLN(getContext(), "[manager] Last update, time: %lu sec", lastUpdate);
 		return !lastUpdate || (now && (nextUpdate < now));
 	}
 };

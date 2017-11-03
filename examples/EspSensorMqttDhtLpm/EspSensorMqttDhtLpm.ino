@@ -30,13 +30,13 @@
 ADC_MODE(ADC_VCC);
 #define DHTTYPE										DHT11
 #define PIN_DHT										2
-#define MQTT_MAX_PACKET_SIZE						128
+#define MQTT_MAX_PACKET_SIZE							128
 #define MQTT_MAX_PAYLOAD_SIZE						96
 #define MQTT_MAX_MESSAGE_HANDLERS					1
 #define MQTT_COMMAND_TIMEOUT_MS						(3*1000L)
-#define MQTT_KEEP_ALIVE_INTERVAL_SEC				(lCtx.publishPeriodMs/1000L*2)
+#define MQTT_KEEP_ALIVE_INTERVAL_SEC					(lCtx.publishPeriodMs/1000L*2)
 #define MQTT_SUBSCRIBE_QOS							MqttClient::QOS0
-#define MQTT_PUBLISH_QOS							MqttClient::QOS0
+#define MQTT_PUBLISH_QOS								MqttClient::QOS0
 #define MQTT_LISTEN_TIME_MS							(1*1000L)
 
 
@@ -45,7 +45,7 @@ ADC_MODE(ADC_VCC);
 //// APP SPECIFIC CONFIGURATION ////
 struct AppJsonConfig: public Butler::Arduino::Config::JsonConfigNode {
 	//// PERSISTENCES ////
-	uint32_t										period = (1*60*1000L);
+	uint32_t											period = (1*60*1000L);
 
 	bool decode(JsonObject &json) {
 		bool updated = false;
@@ -237,11 +237,11 @@ void loop() {
 	Butler::Arduino::LoopStatus::type loopStatus = Butler::Arduino::LoopStatus::CONNECTION_FAILURE;
 	if (manager.check()) {
 		// Establish TCP connection
-		manager.connectServer(network, manager.getConfig().SERVER_ADDR, 1883);
+		manager.connectServer(network, manager.getConfig().SERVER_ADDR, manager.getConfig().SERVER_MQTTS_PORT);
 		// Action
 		loopStatus = Butler::Arduino::Loop::loop(manager.getContext(), lCtx, lConst);
 	}
-	// Idle
+	// Idle => restart
 	unsigned long idlePeriodMs = (loopStatus == Butler::Arduino::LoopStatus::CONNECTION_FAILURE)
 			? manager.getConfig().NET_CONNECT_ERROR_RETRY_TM_MS
 			: Butler::Arduino::Time::calcTimeLeft(manager.getClock().millis(), 0, lCtx.publishPeriodMs);
