@@ -192,6 +192,7 @@ public:
 		String url = Util::makeUrl(Strings::URL_MODEL_UPDATE_FW,
 				getConfig().SERVER_ADDR, getConfig().SERVER_HTTPS_PORT
 		);
+		getHttpUpdate().rebootOnUpdate(true);
 		HTTPUpdateResult res = getHttpUpdate().update(url, getConfig().auth.fingerprints[0], getConfig().auth.token);
 		switch (res) {
 			case HTTP_UPDATE_NO_UPDATES:
@@ -213,6 +214,7 @@ public:
 				getConfig().SERVER_ADDR, getConfig().SERVER_HTTP_PORT
 		);
 		Util::setModelKey(url, Strings::MODEL_KEY_ID, getId());
+		getHttpUpdate().rebootOnUpdate(true);
 		HTTPUpdateResult res = getHttpUpdate().update(url);
 		switch (res) {
 			case HTTP_UPDATE_NO_UPDATES:
@@ -261,6 +263,7 @@ public:
 						http.errorToString(httpCode).c_str()
 				);
 			}
+			http.end();
 		}
 		bool updated = false;
 		if (payload.length()) {
@@ -398,6 +401,7 @@ public:
 					http.errorToString(httpCode).c_str()
 				);
 			}
+			http.end();
 		}
 		// Process authentication response
 		bool updated = false;
@@ -436,7 +440,6 @@ public:
 	bool check() {
 		if (!isUpdateTime()) return true;
 		bool res = false;
-		getHttpUpdate().rebootOnUpdate(true);
 		if (isServerFingerprint()) {
 			if (checkServerFingerprintsUpdate()) {
 				AuthenticateStatus::Type authStatus = AuthenticateStatus::OK;

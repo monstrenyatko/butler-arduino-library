@@ -164,6 +164,7 @@ public:
 					http.errorToString(httpCode).c_str()
 			);
 		}
+		http.end();
 		// Close temporary file
 		f.close();
 		// Finalize file name
