@@ -21,6 +21,12 @@
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <FS.h>
+#if LOG_ENABLED
+extern "C" {
+	#include <cont.h>
+	extern cont_t g_cont;
+}
+#endif
 /* Internal Includes */
 #include "ButlerArduinoStrings.hpp"
 #include "ButlerArduinoLogger.hpp"
@@ -103,6 +109,7 @@ public:
 		LOG_PRINTFLN(getContext(), "#################################");
 		LOG_PRINTFLN(getContext(), "###      State");
 		LOG_PRINTFLN(getContext(), "### Heap Free   : %lu B", ESP.getFreeHeap());
+		LOG_PRINTFLN(getContext(), "### Stack Free   : %li B", cont_get_free_stack(&g_cont));
 		LOG_PRINTFLN(getContext(), "### Time        : %lu Ms", getClock().millis());
 		LOG_PRINTFLN(getContext(), "#################################");
 	}
