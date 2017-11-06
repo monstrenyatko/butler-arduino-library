@@ -20,6 +20,8 @@
 /* Internal Includes */
 #include "ButlerArduinoLpm.hpp"
 #include "ButlerArduinoCrc.h"
+#include "ButlerArduinoLogger.hpp"
+#include "ButlerArduinoUtil.hpp"
 
 
 namespace Butler {
@@ -27,6 +29,11 @@ namespace Arduino {
 
 class EspLpm: public Lpm {
 public:
+	EspLpm(Context &ctx)
+		: mCtx(ctx)
+	{
+	}
+
 	void idle(unsigned long ms) {
 		idle(ms, nullptr, 0);
 	}
@@ -35,7 +42,7 @@ public:
 		// Initialize
 		LpmControl header;
 		header.ctx.msCounter = ms;
-		header.ctx.state = COUNT;
+		header.ctx.state = SET;
 		if (data) {
 			writeData(data, dataSize);
 			if (data2) {
@@ -84,6 +91,7 @@ public:
 			}
 		}
 		// Continue
+		LOG_PRINTFLN(getContext(), "[lpm] recovered state: %i", header.ctx.state);
 		update(header, data, dataSize, data2, data2Size);
 		return true;
 	}
@@ -93,6 +101,7 @@ public:
 	}
 private:
 	enum LpmState {
+		SET,
 		COUNT,
 		DONE
 	};
@@ -104,10 +113,11 @@ private:
 
 	struct LpmControl {
 		uint32_t										crc;
-		LpmControlCtx									ctx;
+		LpmControlCtx								ctx;
 	} __attribute__((aligned(4)));
 
-	const uint32_t										ONE_HOUR_MS = 1*60*60*1000;
+	const uint32_t										ONE_HOUR_MS = 1*60*60*1000UL;
+	Context												&mCtx;
 
 	void update(LpmControl& header, uint32_t* data = nullptr, uint32_t dataSize = 0,
 			uint32_t* data2 = nullptr, uint32_t data2Size = 0)
@@ -115,11 +125,16 @@ private:
 		switch(header.ctx.state) {
 			case COUNT:
 			{
-				// Update state
-				RFMode rfMode = RF_DEFAULT;
 				// Subtract current BOOT-time
 				uint32_t bootTime = millis();
 				header.ctx.msCounter -= (header.ctx.msCounter > bootTime) ? bootTime : header.ctx.msCounter;
+			}
+			// no break
+			case SET:
+			{
+				// Update state
+				header.ctx.state = COUNT;
+				RFMode rfMode = RF_DEFAULT;
 				// Calculate next sleep time
 				uint32_t sleepTimeMs = header.ctx.msCounter;
 				if (sleepTimeMs > ONE_HOUR_MS) {
@@ -146,7 +161,9 @@ private:
 				// Store state
 				writeHeader(header);
 				// Sleep
-				ESP.deepSleep(sleepTimeMs * 1000L, rfMode);
+				LOG_PRINTFLN(getContext(), "[lpm] deep sleep for %lu ms", sleepTimeMs);
+				// ! Do not sleep ZERO -> it may sleep forever
+				ESP.deepSleep(max(100UL, sleepTimeMs * 1000UL), rfMode);
 			}
 				break;
 			case DONE:
@@ -177,6 +194,10 @@ private:
 
 	void writeData(const uint32_t* data, uint32_t dataSize, uint32_t offset = 0) {
 		ESP.rtcUserMemoryWrite(sizeof(LpmControl) + offset, const_cast<uint32_t*>(data), dataSize);
+	}
+
+	Context& getContext() {
+		return mCtx;
 	}
 };
 

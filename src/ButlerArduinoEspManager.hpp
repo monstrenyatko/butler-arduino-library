@@ -68,7 +68,7 @@ template<class CONFIG_T>
 class EspManager {
 public:
 	EspManager(uint32_t *lpmData = nullptr, uint32_t lpmDataSize = 0)
-		: mLpmData(lpmData), mLpmDataSize(lpmDataSize),
+		: mLpm(mCtx), mLpmData(lpmData), mLpmDataSize(lpmDataSize),
 		mHwUart({getConfig().HW_UART_SPEED}), mHttpUpdate(getContext())
 	{}
 
