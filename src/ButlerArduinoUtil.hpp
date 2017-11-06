@@ -29,6 +29,12 @@ namespace Arduino {
 	}
 #endif
 
+#ifndef max
+	template <class T> inline const T& max(const T& a, const T& b) {
+		return b > a ? b : a;
+	}
+#endif
+
 namespace Util {
 
 String macAddressToHex(String mac) {
