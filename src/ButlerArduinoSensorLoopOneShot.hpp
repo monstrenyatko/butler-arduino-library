@@ -27,7 +27,7 @@ namespace Butler {
 namespace Arduino {
 
 struct LoopStatus {
-	typedef int										type;
+	typedef int											type;
 	enum {
 		CONNECTION_FAILURE = -2,
 		FAILURE = -1,
@@ -52,7 +52,7 @@ struct LoopConstants {
 
 	// Functions
 	MessagePayloadBuilder_f								buildMessagePayload = NULL;
-	ConfigMessageProcessor_f							processConfigMessage = NULL;
+	ConfigMessageProcessor_f								processConfigMessage = NULL;
 };
 
 struct LoopContext {

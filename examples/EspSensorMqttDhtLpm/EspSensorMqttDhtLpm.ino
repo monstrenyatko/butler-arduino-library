@@ -109,8 +109,7 @@ Butler::Arduino::EspManager<Configuration>			manager;
 Butler::Arduino::LoopContext							lCtx;
 Butler::Arduino::LoopConstants						lConst;
 Butler::Arduino::DhtSensor							sensor(*new DHT(PIN_DHT, DHTTYPE));
-WiFiClient											network;
-//WiFiClientSecure									network;
+WiFiClientSecure										network;
 
 ////////// IMPLEMENTATION //////////
 void buildMessagePayload(char* buffer, int size) {
@@ -236,10 +235,16 @@ void loop() {
 	// Loop
 	Butler::Arduino::LoopStatus::type loopStatus = Butler::Arduino::LoopStatus::CONNECTION_FAILURE;
 	if (manager.check()) {
-		// Establish TCP connection
-		manager.connectServer(network, manager.getConfig().SERVER_ADDR, manager.getConfig().SERVER_MQTTS_PORT);
-		// Action
-		loopStatus = Butler::Arduino::Loop::loop(manager.getContext(), lCtx, lConst);
+		// Configure SSL
+		if (manager.setupSecureServerConnection(network)) {
+			manager.printState();
+			// Establish connection to the Server
+			if (manager.connectServer(network, manager.getConfig().SERVER_ADDR, manager.getConfig().SERVER_MQTTS_PORT)) {
+				manager.printState();
+				// Action
+				loopStatus = Butler::Arduino::Loop::loop(manager.getContext(), lCtx, lConst);
+			}
+		}
 	}
 	// Idle => restart
 	unsigned long idlePeriodMs = (loopStatus == Butler::Arduino::LoopStatus::CONNECTION_FAILURE)

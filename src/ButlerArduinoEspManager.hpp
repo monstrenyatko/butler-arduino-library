@@ -104,6 +104,15 @@ public:
 		ESP.reset();
 	}
 
+	/** Restarts board. */
+	void softRestart() {
+		yield();
+		getLpm().idle(0,
+			reinterpret_cast<uint32_t*>(&mSleepMemory), sizeof(mSleepMemory),
+			mLpmData, mLpmDataSize
+		);
+	}
+
 	/** Prints board current state like: heap, time, etc... */
 	void printState() {
 		LOG_PRINTFLN(getContext(), "#################################");
@@ -117,7 +126,7 @@ public:
 	/** Puts board to sleep. */
 	void idle(uint32_t ms, bool debug = true) {
 		if (debug) {
-			LOG_PRINTFLN(getContext(), "Sleep for %lu Ms", ms);
+			LOG_PRINTFLN(getContext(), "[manager] Sleep for %lu ms", ms);
 		}
 		getLpm().idle(ms,
 			reinterpret_cast<uint32_t*>(&mSleepMemory), sizeof(mSleepMemory),
@@ -150,21 +159,62 @@ public:
 		return connected;
 	}
 
-	bool connectServer(Client &client, const String &host, uint16_t port, bool sleepOnFailure = true) {
+	bool connectServer(WiFiClientSecure &client, const String &host, uint16_t port, bool sleepOnFailure = true) {
 		LOG_PRINTFLN(getContext(), "[manager] Connecting to port: %u", port);
-		client.connect(host.c_str(), port);
-		bool connected = client.connected();
+		bool connected = false;
+		if (client.connect(host.c_str(), port)) {
+			if (client.verifyCertChain(host.c_str())) {
+				connected = true;
+			} else {
+				LOG_PRINTFLN(getContext(), "[manager] ERROR, Certificate verification failed");
+			}
+		} else {
+			LOG_PRINTFLN(getContext(), "[manager] ERROR, Connection failed");
+		}
 		if (connected) {
 			LOG_PRINTFLN(getContext(), "[manager] Connected to Server");
 		} else {
-			LOG_PRINTFLN(getContext(), "[manager] ERROR, Server is not connected");
-			if (sleepOnFailure) {
-				uint32_t retryTm = getConfig().NET_CONNECT_ERROR_RETRY_TM_MS;
-				LOG_PRINTFLN(getContext(), "Retry in %lu Ms", retryTm);
-				idle(retryTm, false);
-			}
+			LOG_PRINTFLN(getContext(), "[manager] ERROR, Can't connect to Server");
 		}
 		return connected;
+	}
+
+	bool setupSecureServerConnection(WiFiClientSecure &client) {
+		bool res = false;
+		// CA certificate
+		{
+			File f = SPIFFS.open(Strings::FILE_NAME_CERT_CA_CRT, "r");
+			if (f) {
+				res = client.loadCACert(f);
+				f.close();
+			}
+			if (!res) {
+				LOG_PRINTFLN(getContext(), "[manager] ERROR, Can't load: %s" , Strings::FILE_NAME_CERT_CA_CRT);
+			}
+		}
+		// Public certificate
+		if (res) {
+			File f = SPIFFS.open(Strings::FILE_NAME_CERT_CRT, "r");
+			if (f) {
+				res = client.loadCertificate(f);
+				f.close();
+			}
+			if (!res) {
+				LOG_PRINTFLN(getContext(), "[manager] ERROR, Can't load: %s", Strings::FILE_NAME_CERT_CRT);
+			}
+		}
+		// Private certificate
+		if (res) {
+			File f = SPIFFS.open(Strings::FILE_NAME_CERT_KEY, "r");
+			if (f) {
+				res = client.loadPrivateKey(f);
+				f.close();
+			}
+			if (!res) {
+				LOG_PRINTFLN(getContext(), "[manager] ERROR, Can't load: %s", Strings::FILE_NAME_CERT_KEY);
+			}
+		}
+		return res;
 	}
 
 	/** Waits the time data using NTP protocol. */
@@ -461,10 +511,10 @@ public:
 						&& SPIFFS.exists(Strings::FILE_NAME_CERT_CRT)
 						&& SPIFFS.exists(Strings::FILE_NAME_CERT_KEY))
 					{
-						// Set update time-stamp
+						// System is healthy => Set the last update time-stamp
 						mSleepMemory.updateTsSec = getClock().rtc();
-						// System is healthy
-						res = true;
+						// Trigger restart, so next call will return `true` immediately
+						softRestart();
 					}
 				}
 			} else {
